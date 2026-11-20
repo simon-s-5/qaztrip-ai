@@ -6,7 +6,13 @@
 import { amount, type Cost, type Range } from "./planValidation.ts";
 import type { GeneralCost } from "./costs";
 
-export type AdvicePlanDay = { day: number; perPerson: Range; items: { placeId: string | null; costs: Cost[] | null }[] };
+export type AdvicePlanDay = {
+  day: number;
+  perPerson: Range;
+  items: { placeId: string | null; costs: Cost[] | null }[];
+  /** Day-level costs added by the server from the conditions (lodging, car, fuel, groceries). */
+  dayCosts?: Cost[];
+};
 
 export type Suggestion =
   | { kind: "hostel"; saving: number }
@@ -34,12 +40,11 @@ function swapSaving(days: AdvicePlanDay[], costs: GeneralCost[], fromId: string,
   if (!to) return 0;
   let saving = 0;
   for (const d of days)
-    for (const it of d.items)
-      for (const c of it.costs ?? []) {
-        if (c.source !== "general" || c.id !== fromId) continue;
-        const cheaper = amount(to, to.unit, to.capacity, c.qty, travellers).perPerson.min;
-        saving += Math.max(0, c.perPerson.min - cheaper);
-      }
+    for (const c of [...d.items.flatMap((it) => it.costs ?? []), ...(d.dayCosts ?? [])]) {
+      if (c.source !== "general" || c.id !== fromId) continue;
+      const cheaper = amount(to, to.unit, to.capacity, c.qty, travellers).perPerson.min;
+      saving += Math.max(0, c.perPerson.min - cheaper);
+    }
   return saving;
 }
 

@@ -82,5 +82,53 @@
     "currency": "KZT",
     "verified": false,
     "source": "Initial estimate (AI-assisted draft) — to be verified by the team"
+  },
+  {
+    "id": "car-rental",
+    "category": "transport",
+    "label": "Car rental, one day (per car, up to 4 people)",
+    "unit": "vehicle",
+    "capacity": 4,
+    "min": 15000,
+    "max": 30000,
+    "currency": "KZT",
+    "verified": false,
+    "source": "Initial estimate (AI-assisted draft) — to be verified by the team"
+  },
+  {
+    "id": "fuel-100km",
+    "category": "transport",
+    "label": "Fuel for about 100 km (per car)",
+    "unit": "vehicle",
+    "capacity": 4,
+    "min": 2000,
+    "max": 3000,
+    "currency": "KZT",
+    "verified": false,
+    "source": "Initial estimate (AI-assisted draft) — to be verified by the team"
+  },
+  {
+    "id": "apartment",
+    "category": "accommodation",
+    "label": "Rented apartment, one night (up to 4 people)",
+    "unit": "room",
+    "capacity": 4,
+    "min": 15000,
+    "max": 30000,
+    "currency": "KZT",
+    "verified": false,
+    "source": "Initial estimate (AI-assisted draft) — to be verified by the team"
+  },
+  {
+    "id": "groceries",
+    "category": "food",
+    "label": "Groceries from a shop for cooking (per person, per day)",
+    "unit": "person",
+    "capacity": 1,
+    "min": 2500,
+    "max": 5000,
+    "currency": "KZT",
+    "verified": false,
+    "source": "Initial estimate (AI-assisted draft) — to be verified by the team"
   }
 ]

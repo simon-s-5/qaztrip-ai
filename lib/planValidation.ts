@@ -1,12 +1,16 @@
 /**
  * Validates an AI-generated plan against our databases and calculates costs.
- * Pure function (no AI, no I/O) so it can be unit-tested: see tests/planValidation.test.mts.
+ * Pure function (no AI, no I/O) so it can be unit-tested: see tests/planValidation.test.mts
+ * and tests/conditions.test.mts.
  *
- * The AI only references ids (place prices and general costs) and counts (rides, meals, nights).
+ * The AI only references ids (place prices and general costs), counts (rides, meals) and meal slots.
  * All amounts are calculated here from data/places.json and data/costs.json.
+ * When the traveller's conditions are given, the server (not the AI) decides lodging, car rental,
+ * fuel and groceries, and turns meals/lodging at relatives or self-cooking into 0 ₸ lines.
  */
 import type { Place } from "./places";
 import type { GeneralCost } from "./costs";
+import type { DayConditions, Meal } from "./conditions";
 
 export type AiCostRef = { id: string; qty: number };
 export type AiItem = {
@@ -17,17 +21,25 @@ export type AiItem = {
   notes: string;
   priceIds: string[];
   generalCosts: AiCostRef[];
+  /** Which meal this item is ("none" for other activities). */
+  meal?: Meal | "none";
+  /** True if the item is mainly travelling between places. */
+  isTransfer?: boolean;
 };
 export type AiDay = { day: number; title: string; items: AiItem[] };
 export type AiPlan = { title: string; overview: string; days: AiDay[]; tips: string[]; warnings: string[] };
 
 export type Range = { min: number; max: number };
 
+/** Why a line costs 0 ₸ (shown as an explanation). */
+export type FreeReason = "lodging-free" | "meal-guest" | "meal-self" | "by-car";
+
 export type Cost = {
-  source: "place" | "general";
-  /** Place price id or general cost id. */
+  /** place = place price; general = costs.json; condition = 0 ₸ because of the traveller's situation. */
+  source: "place" | "general" | "condition";
+  /** Place price id, general cost id or FreeReason. */
   id: string;
-  /** How many times (rides, meals, nights); always 1 for place prices. */
+  /** How many times (rides, meals, nights); 1 for place prices; km/100 for fuel. */
   qty: number;
   unit: "person" | "vehicle" | "room";
   /** People per vehicle/room (1 for "person"). */
@@ -37,6 +49,8 @@ export type Cost = {
   perPerson: Range;
   group: Range;
   verified: boolean;
+  /** Estimated driving distance for fuel lines. */
+  km?: number;
 };
 
 /** Quality metrics of one AI answer. */
@@ -68,22 +82,40 @@ const MONEY_RE =
 export const MAX_QTY = 10;
 export const MAX_TRAVELLERS = 20;
 
+/** General costs the server controls itself when conditions are given (the AI's choice is ignored). */
+const SERVER_CONTROLLED = new Set(["hostel", "hotel-mid", "apartment", "car-rental", "fuel-100km", "groceries"]);
+const RIDES = new Set(["metro", "bus", "taxi-city"]);
+const MEAL_COSTS = new Set(["meal-canteen", "meal-cafe"]);
+const LODGING_COST = { hotel: "hotel-mid", hostel: "hostel", apartment: "apartment" } as const;
+
 const add = (a: Range, b: Range): Range => ({ min: a.min + b.min, max: a.max + b.max });
 const ZERO: Range = { min: 0, max: 0 };
 
 /** Group and per-person amount for one price. Shared units (car, room) are split between travellers. */
 export function amount(price: Range, unit: Cost["unit"], capacity: number, qty: number, travellers: number) {
   const units = unit === "person" ? travellers : Math.ceil(travellers / Math.max(1, capacity));
-  const group = { min: price.min * qty * units, max: price.max * qty * units };
+  const group = { min: Math.round(price.min * qty * units), max: Math.round(price.max * qty * units) };
   const perPerson = { min: Math.round(group.min / travellers), max: Math.round(group.max / travellers) };
   return { units, group, perPerson };
+}
+
+/**
+ * Driving distance of a day by car: round trip to the farthest place of the day plus city driving.
+ * Rounded to 10 km, at least 30 km.
+ */
+export function estimateKm(maxDistanceFromAlmaty: number): number {
+  return Math.max(30, Math.round((2 * maxDistanceFromAlmaty + 30) / 10) * 10);
 }
 
 function clampQty(q: number): number {
   return Number.isFinite(q) ? Math.min(MAX_QTY, Math.max(1, Math.round(q))) : 1;
 }
 
-export function validatePlan(plan: AiPlan, db: Db, opts: { days: number; travellers: number }) {
+export function validatePlan(
+  plan: AiPlan,
+  db: Db,
+  opts: { days: number; travellers: number; conditions?: DayConditions[] },
+) {
   const travellers = Math.min(MAX_TRAVELLERS, Math.max(1, Math.round(opts.travellers)));
   const places = new Map(db.places.map((p) => [p.id, p]));
   const costs = new Map(db.costs.map((c) => [c.id, c]));
@@ -106,14 +138,38 @@ export function validatePlan(plan: AiPlan, db: Db, opts: { days: number; travell
       return "[?]";
     });
 
+  const general = (c: GeneralCost, qty: number, extra?: Partial<Cost>): Cost => ({
+    source: "general",
+    id: c.id,
+    qty,
+    unit: c.unit,
+    capacity: c.capacity,
+    ...amount(c, c.unit, c.capacity, qty, travellers),
+    verified: c.verified,
+    ...extra,
+  });
+  const free = (id: FreeReason): Cost => ({
+    source: "condition",
+    id,
+    qty: 1,
+    unit: "person",
+    capacity: 1,
+    units: travellers,
+    perPerson: ZERO,
+    group: ZERO,
+    verified: true,
+  });
+
   let tripPerPerson = ZERO;
   let tripGroup = ZERO;
   let tripUnknown = 0;
 
-  const days = plan.days.slice(0, opts.days).map((d) => {
+  const days = plan.days.slice(0, opts.days).map((d, dayIndex) => {
+    const dc = opts.conditions?.[dayIndex];
     let dayPerPerson = ZERO;
     let dayGroup = ZERO;
     let dayUnknown = 0;
+    let farthest = 0;
 
     const items = d.items.slice(0, 12).map((it) => {
       v.items++;
@@ -121,7 +177,10 @@ export function validatePlan(plan: AiPlan, db: Db, opts: { days: number; travell
       if (it.placeId && it.placeId !== "none") {
         v.placeRefs++;
         place = places.get(it.placeId);
-        if (place) v.placeRefsValid++;
+        if (place) {
+          v.placeRefsValid++;
+          farthest = Math.max(farthest, place.distanceFromAlmatyKm);
+        }
       }
 
       const itemCosts: Cost[] = [];
@@ -133,21 +192,59 @@ export function validatePlan(plan: AiPlan, db: Db, opts: { days: number; travell
         const p = place?.prices.find((x) => x.id === id);
         if (!p) continue; // invented id → dropped
         v.priceRefsValid++;
-        itemCosts.push({ source: "place", id, qty: 1, unit: "person", capacity: 1, ...amount(p, "person", 1, 1, travellers), verified: p.verified });
+        itemCosts.push({
+          source: "place",
+          id,
+          qty: 1,
+          unit: "person",
+          capacity: 1,
+          ...amount(p, "person", 1, 1, travellers),
+          verified: p.verified,
+        });
       }
 
-      // 2) General costs (transport, meals, accommodation) with a count.
-      // Duplicated ids: keep the first one (a duplicate is not counted as a mismatch).
+      // 2) General costs referenced by the AI. Duplicates: keep the first.
       const refs = new Map<string, AiCostRef>();
       for (const ref of it.generalCosts ?? []) if (!refs.has(ref.id)) refs.set(ref.id, ref);
       v.priceRefs += refs.size;
+      const mealSlot = it.meal && it.meal !== "none" ? it.meal : null;
+      const mealMode = dc && mealSlot ? dc.meals[mealSlot] : "buy";
+      let hasMealCost = false;
+      let rideByCar = false;
+
       for (const ref of refs.values()) {
-        const c = costs.get(ref.id);
+        let c = costs.get(ref.id);
         if (!c) continue; // invented id → dropped
         v.priceRefsValid++;
-        const qty = clampQty(ref.qty);
-        itemCosts.push({ source: "general", id: c.id, qty, unit: c.unit, capacity: c.capacity, ...amount(c, c.unit, c.capacity, qty, travellers), verified: c.verified });
+        if (dc) {
+          if (SERVER_CONTROLLED.has(c.id)) continue; // lodging, car, fuel, groceries: added by the server below
+          if (RIDES.has(c.id)) {
+            if (dc.transport === "rental" || dc.transport === "own") {
+              rideByCar = true; // travelling by car: counted in the day costs
+              continue;
+            }
+            if (dc.transport === "public" && c.id === "taxi-city") c = costs.get("bus") ?? c;
+            if (dc.transport === "taxi" && c.id !== "taxi-city") c = costs.get("taxi-city") ?? c;
+          }
+          if (MEAL_COSTS.has(c.id) && mealMode !== "buy") continue; // replaced by a 0 ₸ line
+        }
+        if (MEAL_COSTS.has(c.id)) hasMealCost = true;
+        itemCosts.push(general(c, clampQty(ref.qty)));
       }
+
+      // 3) Meals according to the conditions.
+      if (dc && mealSlot) {
+        if (mealMode === "guest") itemCosts.push(free("meal-guest"));
+        else if (mealMode === "self") itemCosts.push(free("meal-self"));
+        else if (!hasMealCost) {
+          const canteen = costs.get("meal-canteen");
+          if (canteen) itemCosts.push(general(canteen, 1));
+        }
+      }
+
+      // A ride replaced by the day's car is not "unknown": its cost is in the day's car costs.
+      const carDay = dc?.transport === "rental" || dc?.transport === "own";
+      if (itemCosts.length === 0 && (rideByCar || (carDay && it.isTransfer))) itemCosts.push(free("by-car"));
 
       v.unverifiedPrices += itemCosts.filter((c) => !c.verified).length;
       if (itemCosts.length === 0) {
@@ -162,6 +259,7 @@ export function validatePlan(plan: AiPlan, db: Db, opts: { days: number; travell
       return {
         time: strip(it.time),
         placeId: place ? place.id : null,
+        meal: mealSlot,
         activity: strip(it.activity),
         transport: strip(it.transport),
         notes: strip(it.notes),
@@ -169,10 +267,44 @@ export function validatePlan(plan: AiPlan, db: Db, opts: { days: number; travell
       };
     });
 
+    // 4) Day-level costs decided by the server from the conditions.
+    const dayCosts: Cost[] = [];
+    if (dc) {
+      if (dc.lodging === "free") dayCosts.push(free("lodging-free"));
+      else if (dc.lodging) {
+        const c = costs.get(LODGING_COST[dc.lodging]);
+        if (c) dayCosts.push(general(c, 1));
+      }
+      if (dc.transport === "rental" || dc.transport === "own") {
+        const rental = costs.get("car-rental");
+        if (dc.transport === "rental" && rental) dayCosts.push(general(rental, 1));
+        const fuel = costs.get("fuel-100km");
+        const km = estimateKm(farthest);
+        if (fuel) dayCosts.push(general(fuel, km / 100, { km }));
+      }
+      if (Object.values(dc.meals).includes("self")) {
+        const g = costs.get("groceries");
+        if (g) dayCosts.push(general(g, 1));
+      }
+      v.unverifiedPrices += dayCosts.filter((c) => !c.verified).length;
+      for (const c of dayCosts) {
+        dayPerPerson = add(dayPerPerson, c.perPerson);
+        dayGroup = add(dayGroup, c.group);
+      }
+    }
+
     tripPerPerson = add(tripPerPerson, dayPerPerson);
     tripGroup = add(tripGroup, dayGroup);
     tripUnknown += dayUnknown;
-    return { day: d.day, title: strip(d.title), items, perPerson: dayPerPerson, group: dayGroup, unknownCount: dayUnknown };
+    return {
+      day: d.day,
+      title: strip(d.title),
+      items,
+      dayCosts,
+      perPerson: dayPerPerson,
+      group: dayGroup,
+      unknownCount: dayUnknown,
+    };
   });
 
   return {

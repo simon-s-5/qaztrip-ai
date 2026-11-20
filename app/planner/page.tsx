@@ -11,6 +11,17 @@ import { getPlace } from "@/lib/places";
 import type { DictKey } from "@/lib/dictionaries";
 import type { Cost, PlanValidation, Range } from "@/lib/planValidation";
 import type { BudgetAdvice, Suggestion } from "@/lib/budgetAdvice";
+import {
+  DEFAULT_FORM,
+  FOOD_FORM,
+  LODGING,
+  TRANSPORT,
+  type Conditions,
+  type FoodForm,
+  type Lodging,
+  type Transport,
+} from "@/lib/conditions";
+import { ConditionsCard } from "@/components/ConditionsCard";
 
 const INTERESTS = ["nature", "hiking", "culture", "history", "food", "city", "winter", "relax", "photo", "family"] as const;
 const CITIES = ["Almaty", "Qonaev", "Talgar", "Esik", "Saty"];
@@ -19,21 +30,63 @@ const MAX_TRAVELLERS = 20;
 type Item = {
   time: string;
   placeId: string | null;
+  meal: string | null;
   activity: string;
   transport: string;
   notes: string;
   costs: Cost[] | null;
 };
-type Day = { day: number; title: string; items: Item[]; perPerson: Range; group: Range; unknownCount: number };
+type Day = {
+  day: number;
+  title: string;
+  items: Item[];
+  dayCosts: Cost[];
+  perPerson: Range;
+  group: Range;
+  unknownCount: number;
+};
 type PlanResponse = {
   plan: { title: string; overview: string; days: Day[]; tips: string[]; warnings: string[] };
   totals: { perPerson: Range; group: Range; unknownCount: number };
   travellers: number;
   budget: number;
   validation: PlanValidation;
-  budgetCheck?: { attempted: boolean; revised: boolean; original: Range; fits: boolean };
+  budgetCheck?: { attempted: boolean; revised: boolean; original: Range; fits: boolean } | null;
   advice?: BudgetAdvice | null;
+  conditions: Conditions;
+  conditionsFromText: boolean;
+  /** The AI route, sent back for recalculation when the user corrects the conditions. */
+  aiPlan: unknown;
 };
+
+/** A choice group in the form (segmented chips). */
+function ChoiceGroup<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+  prefix,
+}: {
+  label: string;
+  options: readonly T[];
+  value: T;
+  onChange: (v: T) => void;
+  prefix: string;
+}) {
+  const { t } = usePlacesI18n();
+  return (
+    <fieldset>
+      <legend className="mb-1.5 text-sm font-medium">{label}</legend>
+      <div className="flex flex-wrap gap-2">
+        {options.map((o) => (
+          <button key={o} type="button" className="chip" aria-pressed={value === o} onClick={() => onChange(o)}>
+            {t(`${prefix}.${o}` as DictKey)}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
 
 export default function PlannerPage() {
   const { t, language, formatKzt, placeText, costLabel } = usePlacesI18n();
@@ -43,9 +96,37 @@ export default function PlannerPage() {
   const [interests, setInterests] = useState<string[]>(["nature", "city"]);
   const [startCity, setStartCity] = useState("Almaty");
   const [extra, setExtra] = useState("");
+  const [lodging, setLodging] = useState<Lodging>(DEFAULT_FORM.lodging);
+  const [transport, setTransport] = useState<Transport>(DEFAULT_FORM.transport);
+  const [food, setFood] = useState<FoodForm>(DEFAULT_FORM.food);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<DictKey | null>(null);
   const [result, setResult] = useState<PlanResponse | null>(null);
+  const [recalcBusy, setRecalcBusy] = useState(false);
+  const [recalcError, setRecalcError] = useState<DictKey | null>(null);
+  const [recalculated, setRecalculated] = useState(false);
+
+  /** Same route, corrected conditions: costs are recalculated by the server (no AI call). */
+  async function recalc(conditions: Conditions) {
+    if (!result) return;
+    setRecalcBusy(true);
+    setRecalcError(null);
+    try {
+      const data = await postJson<PlanResponse>("/api/plan/recalc", {
+        aiPlan: result.aiPlan,
+        conditions,
+        days: result.validation.daysRequested,
+        travellers: result.travellers,
+        budget: result.budget,
+      });
+      setResult(data);
+      setRecalculated(true);
+    } catch (err) {
+      setRecalcError(errorKey(err));
+    } finally {
+      setRecalcBusy(false);
+    }
+  }
 
   function toggle(i: string) {
     setInterests((s) => (s.includes(i) ? s.filter((x) => x !== i) : [...s, i]));
@@ -61,6 +142,8 @@ export default function PlannerPage() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setRecalculated(false);
+    setRecalcError(null);
     try {
       const data = await postJson<PlanResponse>("/api/plan", {
         days,
@@ -70,6 +153,9 @@ export default function PlannerPage() {
         startCity: startCity.trim() || "Almaty",
         extra: extra.trim(),
         language: language.name,
+        lodging,
+        transport,
+        food,
       });
       setResult(data);
       requestAnimationFrame(() => document.getElementById("plan-result")?.scrollIntoView({ behavior: "smooth" }));
@@ -85,7 +171,31 @@ export default function PlannerPage() {
 
   function costName(c: Cost, placeId: string | null) {
     if (c.source === "general") return costLabel(c.id);
+    if (c.source === "condition") return t(`free.${c.id}` as DictKey);
     return (placeId && placeText(placeId).priceLabels[c.id]) || c.id;
+  }
+
+  function costLine(c: Cost, placeId: string | null, n: number) {
+    const isFree = c.source === "condition";
+    return (
+      <li key={`${c.source}:${c.id}`} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+        <Icon name={isFree ? "check" : "wallet"} className={`h-4 w-4 ${isFree ? "text-brand" : "text-accent"}`} />
+        <span className="text-muted">
+          {costName(c, placeId)}
+          {c.km ? (
+            <span className="tabular-nums"> ({t("planner.km", { km: c.km })})</span>
+          ) : (
+            c.qty > 1 && <span className="tabular-nums"> ×{c.qty}</span>
+          )}
+          :
+        </span>
+        <span className="font-semibold tabular-nums">{isFree ? formatKzt(0) : range(c.perPerson)}</span>
+        {!c.verified && <UnverifiedTag />}
+        {n > 1 && c.unit !== "person" && (
+          <span className="w-full ps-6 text-xs text-muted">{t("planner.shared", { units: c.units })}</span>
+        )}
+      </li>
+    );
   }
 
   return (
@@ -149,6 +259,17 @@ export default function PlannerPage() {
           </datalist>
         </label>
 
+        <ChoiceGroup label={t("cond.lodging")} options={LODGING} value={lodging} onChange={setLodging} prefix="cond.lodging" />
+        <ChoiceGroup
+          label={t("cond.transport")}
+          options={TRANSPORT}
+          value={transport}
+          onChange={setTransport}
+          prefix="cond.transport"
+        />
+        <ChoiceGroup label={t("cond.food")} options={FOOD_FORM} value={food} onChange={setFood} prefix="cond.food" />
+        <p className="text-xs text-muted">{t("cond.textWins")}</p>
+
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium">{t("planner.extra")}</span>
           <textarea
@@ -198,6 +319,26 @@ export default function PlannerPage() {
 
       {result && (
         <section id="plan-result" className="scroll-mt-20 space-y-4">
+          <ConditionsCard
+            key={JSON.stringify(result.conditions)}
+            conditions={result.conditions}
+            days={result.validation.daysRequested}
+            fromText={result.conditionsFromText}
+            busy={recalcBusy}
+            onRecalc={recalc}
+          />
+          {recalcBusy && <p className="text-sm text-muted">{t("common.loading")}</p>}
+          {recalculated && !recalcBusy && (
+            <p role="status" className="rounded-lg bg-brand-soft px-3 py-2 text-sm text-brand">
+              {t("cond.recalculated")}
+            </p>
+          )}
+          {recalcError && (
+            <p role="alert" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger-ink">
+              {t(recalcError)}
+            </p>
+          )}
+
           <div className="card space-y-3 p-4">
             <AiBadge />
             <h2 className="text-xl font-bold">{result.plan.title}</h2>
@@ -244,20 +385,7 @@ export default function PlannerPage() {
                         {it.costs ? (
                           <ul className="space-y-1">
                             {it.costs.map((c) => (
-                              <li key={`${c.source}:${c.id}`} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                                <Icon name="wallet" className="h-4 w-4 text-accent" />
-                                <span className="text-muted">
-                                  {costName(c, it.placeId)}
-                                  {c.qty > 1 && <span className="tabular-nums"> ×{c.qty}</span>}:
-                                </span>
-                                <span className="font-semibold tabular-nums">{range(c.perPerson)}</span>
-                                {!c.verified && <UnverifiedTag />}
-                                {result.travellers > 1 && c.unit !== "person" && (
-                                  <span className="w-full ps-6 text-xs text-muted">
-                                    {t("planner.shared", { units: c.units })}
-                                  </span>
-                                )}
-                              </li>
+                              costLine(c, it.placeId, result.travellers)
                             ))}
                           </ul>
                         ) : (
@@ -271,6 +399,16 @@ export default function PlannerPage() {
                   );
                 })}
               </ol>
+              {d.dayCosts?.length > 0 && (
+                <div className="border-t border-line px-4 py-3 text-sm">
+                  <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">{t("planner.dayCosts")}</p>
+                  <ul className="space-y-1">
+                    {d.dayCosts.map((c) => (
+                      costLine(c, null, result.travellers)
+                    ))}
+                  </ul>
+                </div>
+              )}
               <footer className="space-y-1 border-t border-line px-4 py-2.5 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-muted">
