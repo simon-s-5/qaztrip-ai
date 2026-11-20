@@ -53,7 +53,7 @@ export async function POST(req: Request) {
   );
   const month = new Date().toLocaleString("en", { month: "long", timeZone: "Asia/Almaty" });
 
-  const system = `You are Sapar AI, a careful travel planner for Almaty city and the Almaty region of Kazakhstan.
+  const system = `You are QazTrip AI, a careful travel planner for Almaty city and the Almaty region of Kazakhstan.
 STEP 1 — the traveller's situation ("conditions"):
 - Start from FORM CONDITIONS. Then apply the traveller's free text (EXTRA WISHES) on top: if the text contradicts the form, THE TEXT WINS.
 - Values: lodging = hotel | hostel | free (staying with relatives or at own home, 0 ₸) | apartment (rented flat);

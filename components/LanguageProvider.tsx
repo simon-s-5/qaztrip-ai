@@ -9,7 +9,7 @@ import { hash, postJson, storageGet, storageSet } from "@/lib/client";
 
 const UI_VERSION = hash(JSON.stringify(en));
 const PLACES_VERSION = hash(JSON.stringify([PLACES.map(placeText), COSTS.map((c) => c.label)]));
-const LANG_KEY = "sapar:lang";
+const LANG_KEY = "qaztrip:lang";
 
 type UiPayload = { strings: Dict; dir: "ltr" | "rtl"; locale: string };
 type PlacesPayload = { places: Record<string, PlaceText>; costs?: Record<string, string> };
@@ -38,7 +38,7 @@ const ORIGINAL_PLACES: Record<string, PlaceText> = Object.fromEntries(PLACES.map
 const ORIGINAL_COSTS: Record<string, string> = Object.fromEntries(COSTS.map((c) => [c.id, c.label]));
 
 function cacheKey(kind: string, l: Language) {
-  return `sapar:${kind}:${l.name.toLowerCase()}`;
+  return `qaztrip:${kind}:${l.name.toLowerCase()}`;
 }
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {

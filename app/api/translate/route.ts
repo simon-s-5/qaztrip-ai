@@ -21,7 +21,7 @@ const placesCache = new MemoryCache<PlacesResult>(100);
 
 const SYSTEM =
   "You are a professional localization engine for a tourism website about the Almaty region of Kazakhstan. " +
-  "Translate naturally and concisely for tourists. Keep the brand name 'Sapar AI', the currency sign ₸, " +
+  "Translate naturally and concisely for tourists. Keep the brand name 'QazTrip AI', the currency sign ₸, " +
   "numbers and placeholders in curly braces (like {n} or {amount}) exactly as they are. " +
   "Use well-known local names of places when they exist in the target language.";
 

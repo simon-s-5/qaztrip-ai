@@ -3,7 +3,7 @@
  * Kazakh, Russian and English are written by hand; any other language is translated by Gemini.
  */
 export const en = {
-  appName: "Sapar AI",
+  appName: "QazTrip AI",
   tagline: "AI travel guide to the Almaty region",
   "nav.home": "Home",
   "nav.planner": "Planner",
@@ -184,7 +184,7 @@ export const en = {
   "chat.suggest3": "Which places are good to visit with kids?",
   "chat.clear": "New chat",
   "about.title": "How AI works",
-  "about.intro": "Sapar AI uses artificial intelligence to help tourists — and we keep it honest. Here is exactly what the AI does and does not do.",
+  "about.intro": "QazTrip AI uses artificial intelligence to help tourists — and we keep it honest. Here is exactly what the AI does and does not do.",
   "about.models.title": "Models we use",
   "about.models.body": "Google Gemini plans routes, answers questions and translates the interface. If the main model is overloaded, the server retries and then switches to a lighter backup Gemini model. Tavily web search brings fresh information with source links.",
   "about.prices.title": "Prices are never invented",
@@ -237,7 +237,7 @@ export type DictKey = keyof typeof en;
 export type Dict = Record<DictKey, string>;
 
 export const kk: Dict = {
-  appName: "Sapar AI",
+  appName: "QazTrip AI",
   tagline: "Алматы өңіріне арналған ЖИ-гид",
   "nav.home": "Басты бет",
   "nav.planner": "Жоспар",
@@ -418,7 +418,7 @@ export const kk: Dict = {
   "chat.suggest3": "Балалармен баруға қай орындар қолайлы?",
   "chat.clear": "Жаңа чат",
   "about.title": "ЖИ қалай жұмыс істейді",
-  "about.intro": "Sapar AI туристерге көмектесу үшін жасанды интеллектті қолданады — әрі адал жұмыс істейді. Төменде ЖИ не істейтіні және не істемейтіні жазылған.",
+  "about.intro": "QazTrip AI туристерге көмектесу үшін жасанды интеллектті қолданады — әрі адал жұмыс істейді. Төменде ЖИ не істейтіні және не істемейтіні жазылған.",
   "about.models.title": "Қолданылатын модельдер",
   "about.models.body": "Google Gemini маршрут құрады, сұрақтарға жауап береді және интерфейсті аударады. Негізгі модель шамадан тыс жүктелсе, сервер сұранысты қайталайды, сосын жеңілірек резервтік Gemini моделіне ауысады. Tavily веб-іздеуі жаңа ақпаратты дереккөз сілтемелерімен бірге әкеледі.",
   "about.prices.title": "Бағалар ойдан шығарылмайды",
@@ -468,7 +468,7 @@ export const kk: Dict = {
 };
 
 export const ru: Dict = {
-  appName: "Sapar AI",
+  appName: "QazTrip AI",
   tagline: "ИИ-гид по Алматинскому региону",
   "nav.home": "Главная",
   "nav.planner": "План",
@@ -649,7 +649,7 @@ export const ru: Dict = {
   "chat.suggest3": "Куда лучше поехать с детьми?",
   "chat.clear": "Новый чат",
   "about.title": "Как работает ИИ",
-  "about.intro": "Sapar AI использует искусственный интеллект, чтобы помогать туристам, — и делает это честно. Вот что ИИ делает и чего не делает.",
+  "about.intro": "QazTrip AI использует искусственный интеллект, чтобы помогать туристам, — и делает это честно. Вот что ИИ делает и чего не делает.",
   "about.models.title": "Какие модели мы используем",
   "about.models.body": "Google Gemini строит маршруты, отвечает на вопросы и переводит интерфейс. Если основная модель перегружена, сервер повторяет запрос, а затем переключается на более лёгкую резервную модель Gemini. Веб-поиск Tavily приносит свежую информацию со ссылками на источники.",
   "about.prices.title": "Цены не выдумываются",

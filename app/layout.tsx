@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Sapar AI — Almaty region travel guide",
+  title: "QazTrip AI — Almaty region travel guide",
   description: "AI travel platform for the Almaty region: routes, places and approximate prices in any language.",
 };
 

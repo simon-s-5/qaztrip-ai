@@ -84,7 +84,7 @@ export async function POST(req: Request) {
         ? "Web search was needed but returned no results. Say that fresh information is unavailable."
         : "No web search was used.";
 
-    const system = `You are Sapar AI, a friendly travel assistant for tourists in Almaty city and the Almaty region of Kazakhstan.
+    const system = `You are QazTrip AI, a friendly travel assistant for tourists in Almaty city and the Almaty region of Kazakhstan.
 Today is ${today}. Always answer in ${language}, whatever language the user writes in.
 FACTS YOU MAY USE:
 - DATABASE of places (our own data; all prices are approximate and UNVERIFIED): ${JSON.stringify(placesForPrompt())}

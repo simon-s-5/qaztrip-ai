@@ -9,7 +9,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps<"/places/[id]">) {
   const { id } = await params;
   const place = getPlace(id);
-  return { title: place ? `${place.name} — Sapar AI` : "Sapar AI" };
+  return { title: place ? `${place.name} — QazTrip AI` : "QazTrip AI" };
 }
 
 export default async function PlacePage({ params }: PageProps<"/places/[id]">) {

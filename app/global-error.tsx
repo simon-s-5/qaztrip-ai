@@ -16,7 +16,7 @@ export default function GlobalError({ retry }: { error: unknown; retry: () => vo
         }}
       >
         <div style={{ textAlign: "center", maxWidth: 360 }}>
-          <title>Sapar AI</title>
+          <title>QazTrip AI</title>
           <p style={{ fontWeight: 600 }}>Something went wrong. Please try again.</p>
           <p style={{ color: "#5f6b67", fontSize: 14 }}>Қате шықты. Қайталап көріңіз.</p>
           <button
