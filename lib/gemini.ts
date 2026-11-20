@@ -44,8 +44,15 @@ export function isGeminiConfigured(): boolean {
 /** Time limits of one AI call (ms). Vercel functions here are limited to 60 s in total. */
 export type CallLimits = { budgetMs?: number; attemptTimeoutMs?: number; maxAttempts?: number };
 
-function withFallback<T>(call: (model: string, signal: AbortSignal) => Promise<T>, limits: CallLimits = {}) {
-  return runWithFallback([getModel(), ...getFallbackModels()], call, {
+function withFallback<T>(
+  call: (model: string, signal: AbortSignal) => Promise<T>,
+  limits: CallLimits = {},
+  preferModel?: string,
+) {
+  // A follow-up call (e.g. re-planning) starts with the model that just answered: the primary may be overloaded.
+  const models = [getModel(), ...getFallbackModels()];
+  const ordered = preferModel ? [preferModel, ...models.filter((m) => m !== preferModel)] : models;
+  return runWithFallback(ordered, call, {
     budgetMs: limits.budgetMs ?? 50_000,
     attemptTimeoutMs: limits.attemptTimeoutMs ?? 25_000,
     maxAttempts: limits.maxAttempts ?? 3,
@@ -65,6 +72,7 @@ export async function geminiJson<T = unknown>(opts: {
   schema: object;
   parse?: (data: unknown) => T;
   limits?: CallLimits;
+  preferModel?: string;
 }) {
   const ai = getClient(); // throws MissingKeyError before any retries
   const r = await withFallback(async (model, abortSignal) => {
@@ -82,8 +90,8 @@ export async function geminiJson<T = unknown>(opts: {
     if (!text) throw new Error("Empty response from Gemini");
     const data: unknown = JSON.parse(text);
     return opts.parse ? opts.parse(data) : (data as T);
-  }, opts.limits);
-  return { data: r.value, model: r.model, fallback: r.fallback };
+  }, opts.limits, opts.preferModel);
+  return { data: r.value, model: r.model, fallback: r.model !== getModel() };
 }
 
 /** Calls Gemini for plain text (chat). */
@@ -99,5 +107,5 @@ export async function geminiText(opts: { system: string; contents: Content[]; li
     if (!text) throw new Error("Empty response from Gemini");
     return text.trim();
   }, opts.limits);
-  return { text: r.value, model: r.model, fallback: r.fallback };
+  return { text: r.value, model: r.model, fallback: r.model !== getModel() };
 }

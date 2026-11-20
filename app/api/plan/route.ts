@@ -3,10 +3,16 @@ import { geminiJson, MissingKeyError } from "@/lib/gemini";
 import { PLACES, PLACE_IDS, placesForPrompt } from "@/lib/places";
 import { COSTS, COST_IDS, costsForPrompt } from "@/lib/costs";
 import { MAX_QTY, MAX_TRAVELLERS, validatePlan } from "@/lib/planValidation";
-import { recordPlan, recordPlanError } from "@/lib/metrics";
+import { recordBudgetCheck, recordPlan, recordPlanError } from "@/lib/metrics";
+import { budgetAdvice, isOverBudget } from "@/lib/budgetAdvice";
 import { apiError, checkLimit, handleAiError, LANGUAGE_RE } from "@/lib/api";
 
 export const maxDuration = 60;
+
+/** Time plan inside the 60 s limit: first AI call ≤ 34 s, one re-planning call only if ≥ 12 s are left. */
+const TOTAL_MS = 56_000;
+const FIRST_CALL_MS = 34_000;
+const MIN_REVISION_MS = 12_000;
 
 const INTERESTS = ["nature", "hiking", "culture", "history", "food", "city", "winter", "relax", "photo", "family"] as const;
 
@@ -142,14 +148,64 @@ TRAVELLERS:
 
 Return exactly ${input.days} days.`;
 
-  try {
-    // AiPlan.parse runs inside the retry loop: a malformed answer triggers the next model.
-    const ai = await geminiJson({ system, prompt, schema: SCHEMA, parse: (d) => AiPlan.parse(d) });
+  const db = { places: PLACES, costs: COSTS };
+  const opts = { days: input.days, travellers: input.travellers };
+  const started = Date.now();
 
-    // Server-side validation against the databases + cost calculation (database prices only).
-    const result = validatePlan(ai.data, { places: PLACES, costs: COSTS }, { days: input.days, travellers: input.travellers });
-    recordPlan(result.validation, ai.fallback);
-    return Response.json({ ...result, budget: input.budget, model: ai.model, fallback: ai.fallback });
+  try {
+    // 1) AI builds the plan. AiPlan.parse runs inside the retry loop: a malformed answer triggers the next model.
+    const ai = await geminiJson({
+      system,
+      prompt,
+      schema: SCHEMA,
+      parse: (d) => AiPlan.parse(d),
+      limits: { budgetMs: FIRST_CALL_MS, attemptTimeoutMs: 20_000 },
+    });
+
+    // 2) Server validates it against the databases and calculates costs (database prices only).
+    let result = validatePlan(ai.data, db, opts);
+    let model = ai.model;
+    let fallback = ai.fallback;
+    const original = result.totals.perPerson;
+    const budgetCheck = { attempted: false, revised: false, original, fits: !isOverBudget(original, input.budget) };
+
+    // 3) Over budget → one feedback round: the AI re-plans once with cheaper options. No loops.
+    const remaining = TOTAL_MS - (Date.now() - started);
+    if (!budgetCheck.fits && remaining >= MIN_REVISION_MS) {
+      budgetCheck.attempted = true;
+      try {
+        const feedback = `FEEDBACK FROM OUR SERVER: the known cost of your plan is ${original.min}–${original.max} KZT per person, calculated from our databases. The budget is ${input.budget} KZT per person.
+Re-plan the trip to fit the budget: choose cheaper options — hostel instead of hotel, metro/bus instead of taxi, canteen instead of café, free places instead of paid tours and tickets.
+Keep the traveller's requirements: exactly ${input.days} days, the group size, the interests and the extra wishes. Follow all the RULES. Return the complete revised plan.`;
+        const second = await geminiJson({
+          system,
+          prompt: `${prompt}\n\nYOUR PREVIOUS PLAN:\n${JSON.stringify(ai.data)}\n\n${feedback}`,
+          schema: SCHEMA,
+          parse: (d) => AiPlan.parse(d),
+          preferModel: ai.model,
+          limits: { budgetMs: remaining - 2_000, attemptTimeoutMs: Math.min(20_000, remaining - 2_000), maxAttempts: 2 },
+        });
+        const revised = validatePlan(second.data, db, opts);
+        // Accept the new plan only if it is really cheaper.
+        if (revised.totals.perPerson.min < original.min) {
+          result = revised;
+          model = second.model;
+          fallback = second.fallback;
+          budgetCheck.revised = true;
+          budgetCheck.fits = !isOverBudget(revised.totals.perPerson, input.budget);
+        }
+      } catch (e) {
+        if (e instanceof MissingKeyError) throw e;
+        console.warn("Budget re-planning failed, keeping the first plan");
+      }
+    }
+    recordBudgetCheck(budgetCheck);
+
+    // 4) Still over budget → minimum budget and concrete ways to save (calculated by the server).
+    const advice = budgetCheck.fits ? null : budgetAdvice(result.plan.days, result.totals.perPerson, COSTS, result.travellers);
+
+    recordPlan(result.validation, fallback);
+    return Response.json({ ...result, budget: input.budget, model, fallback, budgetCheck, advice });
   } catch (e) {
     if (!(e instanceof MissingKeyError)) recordPlanError();
     return handleAiError(e);

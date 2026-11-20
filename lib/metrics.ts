@@ -18,6 +18,10 @@ const m = {
   priceRefs: 0,
   priceRefsValid: 0,
   moneyRemoved: 0,
+  overBudget: 0,
+  replans: 0,
+  replansCheaper: 0,
+  replansFit: 0,
   chats: 0,
   chatFallbacks: 0,
   chatSearches: 0,
@@ -55,4 +59,13 @@ export function recordChatError() {
 
 export function getMetrics() {
   return { ...m };
+}
+
+/** Budget feedback loop: first plan over budget → one AI re-plan → cheaper? fits? */
+export function recordBudgetCheck(c: { attempted: boolean; revised: boolean; fits: boolean; original: { min: number } }) {
+  if (!c.attempted && c.fits) return;
+  m.overBudget++;
+  if (c.attempted) m.replans++;
+  if (c.revised) m.replansCheaper++;
+  if (c.revised && c.fits) m.replansFit++;
 }

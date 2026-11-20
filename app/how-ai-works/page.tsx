@@ -19,6 +19,10 @@ type Metrics = {
   priceRefs: number;
   priceRefsValid: number;
   moneyRemoved: number;
+  overBudget: number;
+  replans: number;
+  replansCheaper: number;
+  replansFit: number;
   chats: number;
   chatSearches: number;
   chatSearchesWithSources: number;
@@ -51,7 +55,8 @@ export default function HowAiWorksPage() {
       .catch(() => setStatus(null));
   }, []);
 
-  const flow: DictKey[] = ["about.flow.1", "about.flow.2", "about.flow.3", "about.flow.4"];
+  // Input → AI plans → server checks and calculates → over budget: AI re-plans once → unknown stays "unknown".
+  const flow: DictKey[] = ["about.flow.1", "about.flow.2", "about.flow.3", "about.flow.5", "about.flow.4"];
 
   return (
     <div className="space-y-5">
@@ -129,6 +134,7 @@ function MetricsCard({ m }: { m: Metrics }) {
           <Row label={t("metrics.daysExact")} value={`${m.daysExact}/${m.plans} · ${pct(m.daysExact, m.plans)}`} />
           <Row label={t("quality.money")} value={String(m.moneyRemoved)} />
           <Row label={t("quality.unknown")} value={`${m.itemsUnknown}/${m.items} · ${pct(m.itemsUnknown, m.items)}`} />
+          <Row label={t("metrics.replans")} value={`${m.replansCheaper} / ${m.replansFit} (${m.replans})`} />
           <Row label={t("metrics.chats")} value={String(m.chats)} />
           <Row
             label={t("metrics.searchSources")}

@@ -10,6 +10,7 @@ import { errorKey, postJson } from "@/lib/client";
 import { getPlace } from "@/lib/places";
 import type { DictKey } from "@/lib/dictionaries";
 import type { Cost, PlanValidation, Range } from "@/lib/planValidation";
+import type { BudgetAdvice, Suggestion } from "@/lib/budgetAdvice";
 
 const INTERESTS = ["nature", "hiking", "culture", "history", "food", "city", "winter", "relax", "photo", "family"] as const;
 const CITIES = ["Almaty", "Qonaev", "Talgar", "Esik", "Saty"];
@@ -30,6 +31,8 @@ type PlanResponse = {
   travellers: number;
   budget: number;
   validation: PlanValidation;
+  budgetCheck?: { attempted: boolean; revised: boolean; original: Range; fits: boolean };
+  advice?: BudgetAdvice | null;
 };
 
 export default function PlannerPage() {
@@ -391,13 +394,64 @@ function BudgetSummary({ result, range }: { result: PlanResponse; range: (r: Ran
       {totals.unknownCount > 0 && (
         <p className="text-muted">{t("planner.unknownItems", { n: totals.unknownCount })}</p>
       )}
+
+      {result.budgetCheck?.attempted && (
+        <p className="flex gap-2 rounded-lg bg-accent-soft px-3 py-2 text-accent">
+          <Icon name="spark" className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            {result.budgetCheck.revised
+              ? t(result.budgetCheck.fits ? "budget.revisedFits" : "budget.revised", {
+                  from: range(result.budgetCheck.original),
+                  to: range(totals.perPerson),
+                })
+              : t("budget.notCheaper")}
+          </span>
+        </p>
+      )}
+
       <p className={`rounded-lg px-3 py-2 ${over ? "bg-danger-soft text-danger-ink" : "bg-brand-soft text-brand"}`}>
         {over
           ? t("planner.overBudget")
           : t("planner.withinBudget", { amount: formatKzt(Math.max(0, budget - totals.perPerson.min)) })}
       </p>
+
+      {over && result.advice && <AdviceCard advice={result.advice} />}
       <p className="text-xs text-muted">{t("planner.notIncluded")}</p>
       <p className="text-xs text-muted">{t("planner.costSource")}</p>
+    </div>
+  );
+}
+
+function AdviceCard({ advice }: { advice: BudgetAdvice }) {
+  const { t, formatKzt, placeText } = usePlacesI18n();
+  const text = (s: Suggestion) => {
+    const amount = formatKzt(s.saving);
+    switch (s.kind) {
+      case "fewerDays":
+        return t("budget.tip.fewerDays", { n: s.day, amount });
+      case "skipPaid":
+        return t("budget.tip.skipPaid", { place: placeText(s.placeId)?.name ?? s.placeId, amount });
+      default:
+        return t(`budget.tip.${s.kind}` as DictKey, { amount });
+    }
+  };
+  return (
+    <div className="space-y-2 rounded-lg border border-line p-3">
+      <p className="font-semibold">{t("budget.minimum", { amount: formatKzt(advice.minBudget) })}</p>
+      {advice.suggestions.length > 0 && (
+        <>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">{t("budget.waysTitle")}</p>
+          <ul className="space-y-1.5">
+            {advice.suggestions.map((s) => (
+              <li key={s.kind} className="flex gap-2">
+                <Icon name="bulb" className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                <span>{text(s)}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      <p className="text-xs text-muted">{t("budget.calcNote")}</p>
     </div>
   );
 }
