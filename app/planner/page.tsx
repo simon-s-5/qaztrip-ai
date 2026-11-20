@@ -22,6 +22,8 @@ import {
   type Transport,
 } from "@/lib/conditions";
 import { ConditionsCard } from "@/components/ConditionsCard";
+import type { AutoChoice, WishCost } from "@/lib/wishes";
+import type { Lockable } from "@/lib/conditions";
 
 const INTERESTS = ["nature", "hiking", "culture", "history", "food", "city", "winter", "relax", "photo", "family"] as const;
 const CITIES = ["Almaty", "Qonaev", "Talgar", "Esik", "Saty"];
@@ -51,7 +53,9 @@ type PlanResponse = {
   travellers: number;
   budget: number;
   validation: PlanValidation;
-  budgetCheck?: { attempted: boolean; revised: boolean; original: Range; fits: boolean } | null;
+  budgetCheck?: { attempted: boolean; revised: boolean; original: Range; fits: boolean; wishPlacesKept?: boolean } | null;
+  autoChoices?: AutoChoice[];
+  wishCosts?: WishCost[];
   advice?: BudgetAdvice | null;
   conditions: Conditions;
   conditionsFromText: boolean;
@@ -99,6 +103,9 @@ export default function PlannerPage() {
   const [lodging, setLodging] = useState<Lodging>(DEFAULT_FORM.lodging);
   const [transport, setTransport] = useState<Transport>(DEFAULT_FORM.transport);
   const [food, setFood] = useState<FoodForm>(DEFAULT_FORM.food);
+  // Form fields the user actually changed = explicit wishes (untouched defaults are not).
+  const [touched, setTouched] = useState<Lockable[]>([]);
+  const touch = (f: Lockable) => setTouched((s) => (s.includes(f) ? s : [...s, f]));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<DictKey | null>(null);
   const [result, setResult] = useState<PlanResponse | null>(null);
@@ -119,7 +126,8 @@ export default function PlannerPage() {
         travellers: result.travellers,
         budget: result.budget,
       });
-      setResult(data);
+      // Keep "how the AI understood" wording when the conditions came from the text.
+      setResult({ ...data, conditionsFromText: result.conditionsFromText || data.conditionsFromText });
       setRecalculated(true);
     } catch (err) {
       setRecalcError(errorKey(err));
@@ -156,6 +164,7 @@ export default function PlannerPage() {
         lodging,
         transport,
         food,
+        explicit: touched,
       });
       setResult(data);
       requestAnimationFrame(() => document.getElementById("plan-result")?.scrollIntoView({ behavior: "smooth" }));
@@ -259,12 +268,24 @@ export default function PlannerPage() {
           </datalist>
         </label>
 
-        <ChoiceGroup label={t("cond.lodging")} options={LODGING} value={lodging} onChange={setLodging} prefix="cond.lodging" />
+        <ChoiceGroup
+          label={t("cond.lodging")}
+          options={LODGING}
+          value={lodging}
+          onChange={(v) => {
+            setLodging(v);
+            touch("lodging");
+          }}
+          prefix="cond.lodging"
+        />
         <ChoiceGroup
           label={t("cond.transport")}
           options={TRANSPORT}
           value={transport}
-          onChange={setTransport}
+          onChange={(v) => {
+            setTransport(v);
+            touch("transport");
+          }}
           prefix="cond.transport"
         />
         <ChoiceGroup label={t("cond.food")} options={FOOD_FORM} value={food} onChange={setFood} prefix="cond.food" />
@@ -546,6 +567,9 @@ function BudgetSummary({ result, range }: { result: PlanResponse; range: (r: Ran
           </span>
         </p>
       )}
+      {result.budgetCheck?.wishPlacesKept === false && (
+        <p className="rounded-lg bg-accent-soft px-3 py-2 text-accent">{t("budget.wishPlaceRejected")}</p>
+      )}
 
       <p className={`rounded-lg px-3 py-2 ${over ? "bg-danger-soft text-danger-ink" : "bg-brand-soft text-brand"}`}>
         {over
@@ -553,9 +577,82 @@ function BudgetSummary({ result, range }: { result: PlanResponse; range: (r: Ran
           : t("planner.withinBudget", { amount: formatKzt(Math.max(0, budget - totals.perPerson.min)) })}
       </p>
 
+      {result.autoChoices && result.autoChoices.length > 0 && <AutoChoicesCard choices={result.autoChoices} />}
+      {over && result.wishCosts && result.wishCosts.length > 0 && <WishCostsCard wishes={result.wishCosts} />}
       {over && result.advice && <AdviceCard advice={result.advice} />}
       <p className="text-xs text-muted">{t("planner.notIncluded")}</p>
       <p className="text-xs text-muted">{t("planner.costSource")}</p>
+    </div>
+  );
+}
+
+/** Label of a condition value, e.g. ("lodging", "hotel") → "Hotel". */
+function useCondLabels() {
+  const { t } = usePlacesI18n();
+  return {
+    field: (f: string) => t(`cond.${f}` as DictKey),
+    value: (f: string, v: string) => t(`cond.${f}.${v}` as DictKey),
+  };
+}
+
+/** Things the traveller did not specify, made cheaper by the server to fit the budget. */
+function AutoChoicesCard({ choices }: { choices: AutoChoice[] }) {
+  const { t, formatKzt } = usePlacesI18n();
+  const l = useCondLabels();
+  return (
+    <div className="space-y-1.5 rounded-lg border border-line p-3">
+      <p className="font-semibold">{t("auto.title")}</p>
+      <ul className="space-y-1">
+        {choices.map((c) => (
+          <li key={c.field} className="flex gap-2">
+            <Icon name="check" className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+            <span>
+              {t("auto.line", {
+                field: l.field(c.field),
+                from: l.value(c.field, c.from),
+                to: l.value(c.field, c.to),
+                saving: formatKzt(c.saving),
+              })}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-muted">{t("auto.note")}</p>
+    </div>
+  );
+}
+
+/** Explicit wishes are kept; we show what each costs and the cheaper alternative. */
+function WishCostsCard({ wishes }: { wishes: WishCost[] }) {
+  const { t, formatKzt, placeText } = usePlacesI18n();
+  const l = useCondLabels();
+  const text = (w: WishCost) => {
+    const amounts = { over: formatKzt(w.over), saving: formatKzt(w.saving) };
+    if (w.kind === "place")
+      return t("wish.line", { wish: placeText(w.wish)?.name ?? w.wish, alt: t("wish.freePlace"), ...amounts });
+    if (w.kind === "override" && w.field)
+      return t("wish.lineDay", {
+        n: w.day ?? "",
+        wish: l.value(w.field, w.wish),
+        alt: l.value(w.field, w.alternative),
+        ...amounts,
+      });
+    return t("wish.line", { wish: l.value(w.kind, w.wish), alt: l.value(w.kind, w.alternative), ...amounts });
+  };
+  return (
+    <div className="space-y-2 rounded-lg border border-accent/40 bg-accent-soft/40 p-3">
+      <p className="font-semibold">{t("wish.title")}</p>
+      <ul className="space-y-1.5">
+        {wishes.map((w, i) => (
+          <li key={i} className="flex gap-2">
+            <Icon name="spark" className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+            <span>
+              {text(w)} {w.fitsAfter && <strong>{t("wish.fits")}</strong>}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-muted">{t("wish.note")} {t("budget.calcNote")}</p>
     </div>
   );
 }

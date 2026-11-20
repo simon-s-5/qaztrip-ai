@@ -54,12 +54,17 @@ export function budgetAdvice(
   costs: GeneralCost[],
   travellers: number,
   max = 3,
+  /** Explicit wishes are not suggested for replacement here: their cost is shown separately (lib/wishes.ts). */
+  wishes: { locked?: readonly string[]; wishPlaces?: readonly string[] } = {},
 ): BudgetAdvice {
-  const all: Suggestion[] = [
-    { kind: "hostel", saving: swapSaving(days, costs, "hotel-mid", "hostel", travellers) },
-    { kind: "publicTransport", saving: swapSaving(days, costs, "taxi-city", "bus", travellers) },
-    { kind: "canteen", saving: swapSaving(days, costs, "meal-cafe", "meal-canteen", travellers) },
-  ];
+  const locked = new Set(wishes.locked ?? []);
+  const wishPlaces = new Set(wishes.wishPlaces ?? []);
+  const all: Suggestion[] = [];
+  if (!locked.has("lodging")) all.push({ kind: "hostel", saving: swapSaving(days, costs, "hotel-mid", "hostel", travellers) });
+  if (!locked.has("transport"))
+    all.push({ kind: "publicTransport", saving: swapSaving(days, costs, "taxi-city", "bus", travellers) });
+  if (!locked.has("mealPlace"))
+    all.push({ kind: "canteen", saving: swapSaving(days, costs, "meal-cafe", "meal-canteen", travellers) });
 
   // One day shorter: drop the most expensive day.
   if (days.length > 1) {
@@ -71,7 +76,7 @@ export function budgetAdvice(
   let best: { placeId: string; saving: number } | null = null;
   for (const d of days)
     for (const it of d.items) {
-      if (!it.placeId) continue;
+      if (!it.placeId || wishPlaces.has(it.placeId)) continue;
       const s = (it.costs ?? []).filter((c) => c.source === "place").reduce((a, c) => a + c.perPerson.min, 0);
       if (s > 0 && (!best || s > best.saving)) best = { placeId: it.placeId, saving: s };
     }

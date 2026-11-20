@@ -87,6 +87,7 @@ const SERVER_CONTROLLED = new Set(["hostel", "hotel-mid", "apartment", "car-rent
 const RIDES = new Set(["metro", "bus", "taxi-city"]);
 const MEAL_COSTS = new Set(["meal-canteen", "meal-cafe"]);
 const LODGING_COST = { hotel: "hotel-mid", hostel: "hostel", apartment: "apartment" } as const;
+const MEAL_PLACE_COST = { cafe: "meal-cafe", canteen: "meal-canteen" } as const;
 
 const add = (a: Range, b: Range): Range => ({ min: a.min + b.min, max: a.max + b.max });
 const ZERO: Range = { min: 0, max: 0 };
@@ -227,9 +228,16 @@ export function validatePlan(
             if (dc.transport === "taxi" && c.id !== "taxi-city") c = costs.get("taxi-city") ?? c;
           }
           if (MEAL_COSTS.has(c.id) && mealMode !== "buy") continue; // replaced by a 0 ₸ line
+          // Where bought meals are eaten: a wish ("only cafés") or the server's cheaper choice overrides the AI.
+          if (MEAL_COSTS.has(c.id) && dc.mealPlace !== "auto") c = costs.get(MEAL_PLACE_COST[dc.mealPlace]) ?? c;
         }
-        if (MEAL_COSTS.has(c.id)) hasMealCost = true;
-        itemCosts.push(general(c, clampQty(ref.qty)));
+        if (MEAL_COSTS.has(c.id)) {
+          if (hasMealCost) continue; // one meal price per meal item (e.g. canteen + café both mapped to café)
+          hasMealCost = true;
+        }
+        // A breakfast/lunch/dinner item is one meal per traveller: the AI sometimes multiplies by the group size.
+        const qty = MEAL_COSTS.has(c.id) && mealSlot ? 1 : clampQty(ref.qty);
+        itemCosts.push(general(c, qty));
       }
 
       // 3) Meals according to the conditions.
@@ -237,7 +245,7 @@ export function validatePlan(
         if (mealMode === "guest") itemCosts.push(free("meal-guest"));
         else if (mealMode === "self") itemCosts.push(free("meal-self"));
         else if (!hasMealCost) {
-          const canteen = costs.get("meal-canteen");
+          const canteen = costs.get(dc.mealPlace === "cafe" ? "meal-cafe" : "meal-canteen");
           if (canteen) itemCosts.push(general(canteen, 1));
         }
       }

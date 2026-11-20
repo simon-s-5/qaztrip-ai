@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { PLACE_IDS } from "./places";
 import { COST_IDS } from "./costs";
-import { LODGING, MEAL_MODES, MEALS, OVERRIDE_FIELDS, TRANSPORT } from "./conditions";
+import { LOCKABLE, LODGING, MEAL_MODES, MEAL_PLACES, MEALS, OVERRIDE_FIELDS, TRANSPORT } from "./conditions";
 import { MAX_QTY } from "./planValidation";
 
 const str = { type: "string" };
@@ -36,8 +36,19 @@ export const PLAN_JSON_SCHEMA = {
           },
         },
         notes: { type: "array", items: str, description: "Other wishes understood from the text, short" },
+        mealPlace: { type: "string", enum: [...MEAL_PLACES] },
+        locked: {
+          type: "array",
+          description: "Base fields the traveller explicitly asked for in the text",
+          items: { type: "string", enum: [...LOCKABLE] },
+        },
+        wishPlaces: {
+          type: "array",
+          description: "Place ids the traveller explicitly asked to visit",
+          items: { type: "string", enum: PLACE_IDS },
+        },
       },
-      required: ["lodging", "transport", "meals", "overrides", "notes"],
+      required: ["lodging", "transport", "meals", "mealPlace", "overrides", "notes", "locked", "wishPlaces"],
     },
     title: str,
     overview: str,

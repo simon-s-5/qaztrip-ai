@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { geminiJson, MissingKeyError } from "@/lib/gemini";
-import { placesForPrompt } from "@/lib/places";
+import { PLACE_IDS, placesForPrompt } from "@/lib/places";
 import { costsForPrompt } from "@/lib/costs";
 import { MAX_TRAVELLERS } from "@/lib/planValidation";
 import { AiAnswerZ, PLAN_JSON_SCHEMA } from "@/lib/planSchema";
-import { chooseConditions, FOOD_FORM, formToConditions, LODGING, TRANSPORT, type Conditions } from "@/lib/conditions";
-import { adviceFor, computePlan } from "@/lib/planResult";
+import { chooseConditions, FOOD_FORM, formToConditions, LOCKABLE, LODGING, TRANSPORT, type Conditions } from "@/lib/conditions";
+import { budgetHelp, computePlan, fitUnlocked } from "@/lib/planResult";
+import { keepsWishPlaces } from "@/lib/wishes";
 import { isOverBudget } from "@/lib/budgetAdvice";
 import { recordBudgetCheck, recordPlan, recordPlanError } from "@/lib/metrics";
 import { apiError, checkLimit, handleAiError, LANGUAGE_RE } from "@/lib/api";
@@ -30,10 +31,12 @@ const Body = z.object({
   lodging: z.enum(LODGING).optional().default("hotel"),
   transport: z.enum(TRANSPORT).optional().default("public"),
   food: z.enum(FOOD_FORM).optional().default("buy"),
+  /** Form fields the user actually changed: explicit wishes (untouched defaults are not). */
+  explicit: z.array(z.enum(LOCKABLE)).max(3).optional().default([]),
 });
 
 function describe(c: Conditions) {
-  return `lodging=${c.lodging}; transport=${c.transport}; breakfast=${c.meals.breakfast}; lunch=${c.meals.lunch}; dinner=${c.meals.dinner}`;
+  return `lodging=${c.lodging}; transport=${c.transport}; breakfast=${c.meals.breakfast}; lunch=${c.meals.lunch}; dinner=${c.meals.dinner}; mealPlace=${c.mealPlace}; explicitly chosen in the form: ${c.locked.join(", ") || "nothing"}`;
 }
 
 export async function POST(req: Request) {
@@ -44,7 +47,10 @@ export async function POST(req: Request) {
 
   const input = body.data;
   const hasText = input.extra.trim().length > 0;
-  const formConditions = formToConditions({ lodging: input.lodging, transport: input.transport, food: input.food });
+  const formConditions = formToConditions(
+    { lodging: input.lodging, transport: input.transport, food: input.food },
+    input.explicit,
+  );
   const month = new Date().toLocaleString("en", { month: "long", timeZone: "Asia/Almaty" });
 
   const system = `You are Sapar AI, a careful travel planner for Almaty city and the Almaty region of Kazakhstan.
@@ -55,7 +61,11 @@ STEP 1 — the traveller's situation ("conditions"):
 - Something that applies to all days goes into the base values; something for specific days only goes into "overrides"
   (e.g. "we rent a car on day 3" → {day: 3, field: "transport", value: "rental"}; "dinner at my aunt's on day 2" → {day: 2, field: "dinner", value: "guest"};
   "we always have dinner at relatives" → meals.dinner = "guest"). Lodging on day N means the night after day N.
+- "mealPlace": cafe or canteen only if the text asks for it (e.g. "only restaurants" → cafe), otherwise auto.
+- "locked": the base fields the traveller EXPLICITLY asked for in the text (e.g. "a comfortable hotel" → lodging; "by taxi" → transport; "only cafés" → mealPlace). Do not guess.
+- "wishPlaces": ids of DATABASE places the traveller explicitly asked to visit.
 - "notes": other wishes you understood from the text, very short, in ${input.language}. Empty if there is no text.
+EXPLICIT WISHES ARE SACRED: never replace what the traveller explicitly asked for (locked fields, day exceptions, wished places) to save money — not even when the budget is low. Choose cheaper options only for things they did not specify.
 STEP 2 — the plan (follow the conditions):
 1. For sightseeing use ONLY places from DATABASE, referenced by "placeId". For other items (meals, transfers, rest) use placeId "none".
 2. NEVER write prices, costs, amounts of money or currencies in any text field. All costs are calculated by our server.
@@ -65,6 +75,7 @@ STEP 2 — the plan (follow the conditions):
 5. For city rides add metro, bus or taxi-city in "generalCosts" with qty = number of rides (one per direction), matching the day's transport.
    Mark items that are mainly travelling between places with "isTransfer": true (on car days too).
    Do NOT add lodging, car rental, fuel or groceries — the server adds them from the conditions.
+   "qty" is counted for ONE traveller (e.g. one lunch = qty 1, two rides = qty 2). NEVER multiply by the group size: the server does that.
 6. A place visit that is a tour already includes its transport.
 7. Be realistic about distance and time: places over 150 km from Almaty usually need a full day or an overnight stay.
 8. Current month is ${month}. Respect each place's season and add a warning if a place is out of season.
@@ -102,24 +113,36 @@ Return exactly ${input.days} days.`;
     const { conditions: aiConditions, ...firstPlan } = ai.data;
 
     // Without free text the form is the source of truth; with text, the AI's interpretation (text wins).
-    const conditions = chooseConditions(formConditions, aiConditions, hasText, input.days);
+    const interpreted = chooseConditions(formConditions, aiConditions, hasText, input.days, PLACE_IDS);
 
     // 2) Server: validate against the databases and calculate costs from the conditions.
+    //    Over budget → things the traveller did NOT ask for are made cheaper (no AI); explicit wishes are kept.
     let aiPlan = firstPlan;
-    let result = computePlan(aiPlan, conditions, calc);
+    const original = computePlan(aiPlan, interpreted, calc).totals.perPerson;
+    const fitted = fitUnlocked(aiPlan, interpreted, calc, input.budget);
+    const conditions = fitted.conditions;
+    const autoChoices = fitted.autoChoices;
+    let result = fitted.result;
     let model = ai.model;
     let fallback = ai.fallback;
-    const original = result.totals.perPerson;
-    const budgetCheck = { attempted: false, revised: false, original, fits: !isOverBudget(original, input.budget) };
+    const budgetCheck = {
+      attempted: false,
+      revised: false,
+      original,
+      fits: !isOverBudget(result.totals.perPerson, input.budget),
+      wishPlacesKept: true,
+    };
 
     // 3) Over budget → one feedback round: the AI re-plans once with cheaper options. No loops.
     const remaining = TOTAL_MS - (Date.now() - started);
     if (!budgetCheck.fits && remaining >= MIN_REVISION_MS) {
       budgetCheck.attempted = true;
       try {
-        const feedback = `FEEDBACK FROM OUR SERVER: the known cost of your plan is ${original.min}–${original.max} KZT per person, calculated from our databases. The budget is ${input.budget} KZT per person.
-Re-plan the trip to fit the budget: choose cheaper options — free places instead of paid tours and tickets, canteen instead of café for bought meals, metro/bus instead of taxi where the day's transport allows it.
-Keep the traveller's requirements: exactly ${input.days} days, the group size, the interests, the extra wishes and these CONDITIONS (return them unchanged): ${JSON.stringify(conditions)}.
+        const current = result.totals.perPerson;
+        const feedback = `FEEDBACK FROM OUR SERVER: the known cost of your plan is ${current.min}–${current.max} KZT per person, calculated from our databases. The budget is ${input.budget} KZT per person.
+Re-plan the trip to fit the budget with cheaper options ONLY for things the traveller did not explicitly ask for — e.g. free places instead of paid tours and tickets, canteen instead of café for bought meals (unless mealPlace is locked), metro/bus instead of taxi where the day's transport allows it.
+DO NOT replace the traveller's explicit wishes: locked fields (${conditions.locked.join(", ") || "none"}), the day exceptions, and the wished places (${conditions.wishPlaces.join(", ") || "none"}) must stay. If they make the trip expensive, keep them anyway — our server will tell the traveller what they cost.
+Keep exactly ${input.days} days, the group size, the interests, the extra wishes and these CONDITIONS (return them unchanged): ${JSON.stringify(conditions)}.
 Follow all the RULES. Return the complete revised plan.`;
         const second = await geminiJson({
           system,
@@ -131,9 +154,12 @@ Follow all the RULES. Return the complete revised plan.`;
         });
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { conditions: _ignored, ...secondPlan } = second.data;
-        const revised = computePlan(secondPlan, conditions, calc); // conditions stay fixed
-        // Accept the new plan only if it is really cheaper.
-        if (revised.totals.perPerson.min < original.min) {
+        const revised = computePlan(secondPlan, conditions, calc); // conditions (and wishes) stay fixed
+        // Guard: the AI must not silently drop a place the traveller asked for.
+        budgetCheck.wishPlacesKept = keepsWishPlaces(firstPlan, secondPlan, conditions.wishPlaces);
+        if (!budgetCheck.wishPlacesKept) console.warn("Re-plan dropped a wished place: rejected");
+        // Accept the new plan only if it keeps the wishes and is really cheaper.
+        if (budgetCheck.wishPlacesKept && revised.totals.perPerson.min < result.totals.perPerson.min) {
           aiPlan = secondPlan;
           result = revised;
           model = second.model;
@@ -148,8 +174,8 @@ Follow all the RULES. Return the complete revised plan.`;
     }
     recordBudgetCheck(budgetCheck);
 
-    // 4) Still over budget → minimum budget and concrete ways to save (calculated by the server).
-    const advice = budgetCheck.fits ? null : adviceFor(result, input.budget);
+    // 4) Still over budget → what each explicit wish costs, minimum budget and other ways to save (server).
+    const { wishCosts, advice } = budgetHelp(aiPlan, conditions, calc, result, input.budget);
 
     recordPlan(result.validation, fallback);
     return Response.json({
@@ -158,6 +184,8 @@ Follow all the RULES. Return the complete revised plan.`;
       model,
       fallback,
       budgetCheck,
+      autoChoices,
+      wishCosts,
       advice,
       conditions,
       conditionsFromText: hasText,

@@ -5,7 +5,9 @@ import { useI18n } from "./LanguageProvider";
 import { AiBadge } from "./AiBadge";
 import { Icon } from "./Icon";
 import {
+  LOCKABLE,
   LODGING,
+  MEAL_PLACES,
   MEAL_MODES,
   MEALS,
   OVERRIDE_FIELDS,
@@ -44,7 +46,11 @@ export function ConditionsCard({
   busy: boolean;
   onRecalc: (c: Conditions) => void;
 }) {
-  const { t } = useI18n();
+  const { t, placeText } = useI18n();
+  const isWish = (f: (typeof LOCKABLE)[number]) => conditions.locked?.includes(f);
+  const wishTag = (
+    <span className="ms-1.5 rounded-md bg-accent-soft px-1.5 py-0.5 text-[11px] font-medium text-accent">{t("cond.wishTag")}</span>
+  );
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Conditions>(conditions);
 
@@ -91,9 +97,20 @@ export function ConditionsCard({
         <>
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5">
             <dt className="text-muted">{t("cond.lodging")}</dt>
-            <dd className="font-medium">{valueLabel("lodging", conditions.lodging)}</dd>
+            <dd className="font-medium">
+              {valueLabel("lodging", conditions.lodging)}
+              {isWish("lodging") && wishTag}
+            </dd>
             <dt className="text-muted">{t("cond.transport")}</dt>
-            <dd className="font-medium">{valueLabel("transport", conditions.transport)}</dd>
+            <dd className="font-medium">
+              {valueLabel("transport", conditions.transport)}
+              {isWish("transport") && wishTag}
+            </dd>
+            <dt className="text-muted">{t("cond.mealPlace")}</dt>
+            <dd className="font-medium">
+              {t(`cond.mealPlace.${conditions.mealPlace ?? "auto"}` as DictKey)}
+              {isWish("mealPlace") && wishTag}
+            </dd>
             {MEALS.map((m) => (
               <div key={m} className="contents">
                 <dt className="text-muted">{t(`cond.meal.${m}` as DictKey)}</dt>
@@ -115,6 +132,15 @@ export function ConditionsCard({
               </ul>
             )}
           </div>
+          {conditions.wishPlaces?.length > 0 && (
+            <div>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">{t("cond.wishPlaces")}</p>
+              <p>
+                {conditions.wishPlaces.map((id) => placeText(id)?.name ?? id).join(", ")}
+                {wishTag}
+              </p>
+            </div>
+          )}
           {conditions.notes.length > 0 && (
             <div>
               <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">{t("cond.notes")}</p>
@@ -210,6 +236,21 @@ export function ConditionsCard({
             </button>
           </div>
 
+          <label className="block">
+            <span className="mb-1 block text-xs text-muted">{t("cond.mealPlace")}</span>
+            <select
+              className={select}
+              value={draft.mealPlace ?? "auto"}
+              onChange={(e) => setDraft((d) => ({ ...d, mealPlace: e.target.value as Conditions["mealPlace"] }))}
+            >
+              {MEAL_PLACES.map((v) => (
+                <option key={v} value={v}>
+                  {t(`cond.mealPlace.${v}` as DictKey)}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <p className="text-xs text-muted">{t("cond.recalcNote")}</p>
           <div className="flex flex-wrap gap-2">
             <button
@@ -217,7 +258,9 @@ export function ConditionsCard({
               className="btn-primary"
               disabled={busy}
               onClick={() => {
-                onRecalc(draft);
+                // What the user sets here is their explicit wish: it will not be replaced to save money.
+                const changed = LOCKABLE.filter((k) => draft[k] !== conditions[k]);
+                onRecalc({ ...draft, locked: [...new Set([...(conditions.locked ?? []), ...changed])] });
                 setEditing(false);
               }}
             >
