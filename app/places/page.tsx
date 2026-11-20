@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { usePlacesI18n } from "@/components/LanguageProvider";
 import { Icon } from "@/components/Icon";
+import { RoadBadge } from "@/components/Drivers";
 import { PLACES } from "@/lib/places";
 import type { DictKey } from "@/lib/dictionaries";
 
@@ -80,7 +81,10 @@ export default function PlacesPage() {
                     {p.distanceFromAlmatyKm > 0 ? t("places.distance", { n: p.distanceFromAlmatyKm }) : t("places.inCity")}
                   </span>
                 </div>
-                <p className="text-xs text-muted">{p.nameKk}</p>
+                <p className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                  {p.nameKk}
+                  {p.roadStatus && <RoadBadge status={p.roadStatus.status} />}
+                </p>
                 <p className="line-clamp-3 text-sm text-muted">{tx.description}</p>
                 <p className="mt-auto flex items-center gap-1.5 pt-1 text-sm">
                   <Icon name="wallet" className="h-4 w-4 text-accent" />

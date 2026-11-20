@@ -93,12 +93,13 @@ async function translatePlaces(language: string): Promise<PlacesResult> {
             howToGet: str,
             season: str,
             durationHint: str,
+            roadNote: str,
             priceLabels: {
               type: "array",
               items: { type: "object", properties: { id: str, label: str }, required: ["id", "label"] },
             },
           },
-          required: ["id", "name", "region", "description", "howToGet", "season", "durationHint", "priceLabels"],
+          required: ["id", "name", "region", "description", "howToGet", "season", "durationHint", "roadNote", "priceLabels"],
         },
       },
       generalCosts: {
@@ -131,6 +132,7 @@ async function translatePlaces(language: string): Promise<PlacesResult> {
           howToGet: z.string(),
           season: z.string(),
           durationHint: z.string(),
+          roadNote: z.string().catch(""),
           priceLabels: z.array(z.object({ id: z.string(), label: z.string() })),
         }),
       ),
@@ -158,6 +160,7 @@ async function translatePlaces(language: string): Promise<PlacesResult> {
       howToGet: tr.howToGet || original.howToGet,
       season: tr.season || original.season,
       durationHint: tr.durationHint || original.durationHint,
+      roadNote: original.roadNote ? tr.roadNote || original.roadNote : "",
       priceLabels: labels,
     };
   }

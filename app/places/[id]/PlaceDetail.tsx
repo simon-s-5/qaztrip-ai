@@ -5,6 +5,8 @@ import { usePlacesI18n } from "@/components/LanguageProvider";
 import { UnverifiedTag } from "@/components/AiBadge";
 import { Icon } from "@/components/Icon";
 import { getPlace } from "@/lib/places";
+import { driversForPlace } from "@/lib/drivers";
+import { DriverList, RoadInfo } from "@/components/Drivers";
 
 export function PlaceDetail({ id }: { id: string }) {
   const { t, placeText, placesTranslated, formatKzt } = usePlacesI18n();
@@ -13,6 +15,7 @@ export function PlaceDetail({ id }: { id: string }) {
   const { lat, lng } = place.coordinates;
   const mapUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=12/${lat}/${lng}`;
   const askUrl = `/chat?q=${encodeURIComponent(tx.name)}`;
+  const drivers = driversForPlace(id);
 
   return (
     <article className="space-y-4">
@@ -56,6 +59,16 @@ export function PlaceDetail({ id }: { id: string }) {
         />
       </div>
 
+      {place.roadStatus && (
+        <section className="card p-4">
+          <h2 className="mb-2 flex items-center gap-2 font-semibold">
+            <Icon name="alert" className="h-5 w-5 text-accent" />
+            {t("road.title")}
+          </h2>
+          <RoadInfo road={place.roadStatus} note={tx.roadNote} />
+        </section>
+      )}
+
       <section className="card p-4">
         <h2 className="mb-2 flex items-center gap-2 font-semibold">
           <Icon name="wallet" className="h-5 w-5 text-accent" />
@@ -79,6 +92,16 @@ export function PlaceDetail({ id }: { id: string }) {
           </ul>
         )}
       </section>
+
+      {(drivers.length > 0 || place.roadStatus) && (
+        <section className="card p-4">
+          <h2 className="mb-2 flex items-center gap-2 font-semibold">
+            <Icon name="car" className="h-5 w-5 text-brand" />
+            {t("drivers.title")}
+          </h2>
+          <DriverList drivers={drivers} />
+        </section>
+      )}
 
       <p className="flex items-center gap-1.5 text-sm text-muted">
         <Icon name="link" className="h-4 w-4" />

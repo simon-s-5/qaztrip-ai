@@ -1,0 +1,50 @@
+[
+  {
+    "id": "demo-aidos",
+    "name": "Aidos",
+    "vehicleType": "4x4",
+    "seats": 4,
+    "routes": ["charyn", "kolsai", "kaindy", "turgen", "assy-plateau"],
+    "pricePerTrip": { "min": 45000, "max": 70000, "currency": "KZT", "per": "day" },
+    "languages": ["en", "ru", "kk"],
+    "verified": false,
+    "consent": false,
+    "isDemo": true
+  },
+  {
+    "id": "demo-marat",
+    "name": "Marat",
+    "vehicleType": "minivan",
+    "seats": 7,
+    "routes": ["charyn", "kolsai", "kaindy", "altyn-emel", "tamgaly"],
+    "pricePerTrip": { "min": 40000, "max": 65000, "currency": "KZT", "per": "day" },
+    "languages": ["ru", "kk"],
+    "verified": false,
+    "consent": false,
+    "isDemo": true
+  },
+  {
+    "id": "demo-dana",
+    "name": "Dana",
+    "vehicleType": "sedan",
+    "seats": 3,
+    "routes": ["big-almaty-lake", "shymbulak", "butakovka", "turgen", "issyk", "kapchagay"],
+    "pricePerTrip": { "min": 20000, "max": 35000, "currency": "KZT", "per": "day" },
+    "languages": ["en", "ru"],
+    "verified": false,
+    "consent": false,
+    "isDemo": true
+  },
+  {
+    "id": "demo-yerlan",
+    "name": "Yerlan",
+    "vehicleType": "4x4",
+    "seats": 4,
+    "routes": ["big-almaty-lake", "charyn", "kolsai", "kaindy"],
+    "pricePerTrip": { "min": 50000, "max": 80000, "currency": "KZT", "per": "day" },
+    "languages": ["en", "ru", "tr"],
+    "verified": false,
+    "consent": false,
+    "isDemo": true
+  }
+]

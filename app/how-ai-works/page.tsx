@@ -35,6 +35,9 @@ type Status = { model: string; fallbackModels: string[]; gemini: boolean; tavily
 const SECTIONS: { icon: string; title: DictKey; body: DictKey }[] = [
   { icon: "spark", title: "about.models.title", body: "about.models.body" },
   { icon: "wallet", title: "about.prices.title", body: "about.prices.body" },
+  { icon: "car", title: "about.drivers.title", body: "about.drivers.body" },
+  { icon: "alert", title: "about.road.title", body: "about.road.body" },
+  { icon: "send", title: "about.request.title", body: "about.request.body" },
   { icon: "globe", title: "about.search.title", body: "about.search.body" },
   { icon: "chat", title: "about.translate.title", body: "about.translate.body" },
   { icon: "alert", title: "about.limits.title", body: "about.limits.body" },

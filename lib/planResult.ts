@@ -1,12 +1,13 @@
 import "server-only";
 import { PLACES } from "./places";
 import { COSTS } from "./costs";
+import { DRIVERS } from "./drivers";
 import { validatePlan, type AiPlan } from "./planValidation";
 import { resolveConditions, type Conditions } from "./conditions";
 import { budgetAdvice, isOverBudget } from "./budgetAdvice";
 import { cheapenUnlocked, wishCosts, type AutoChoice } from "./wishes";
 
-export const DB = { places: PLACES, costs: COSTS };
+export const DB = { places: PLACES, costs: COSTS, drivers: DRIVERS };
 
 type Calc = { days: number; travellers: number };
 

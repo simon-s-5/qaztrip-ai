@@ -27,6 +27,11 @@ export function QualityCheck({ v }: { v: PlanValidation }) {
       value: `${v.daysReturned}/${v.daysRequested}`,
       ok: v.daysReturned === v.daysRequested,
     },
+    {
+      label: t("quality.drivers"),
+      value: `${v.driverRefsValid ?? 0}/${v.driverRefs ?? 0} · ${pct(v.driverRefsValid ?? 0, v.driverRefs ?? 0)}`,
+      ok: (v.driverRefsValid ?? 0) === (v.driverRefs ?? 0),
+    },
     { label: t("quality.money"), value: String(v.moneyRemoved), ok: v.moneyRemoved === 0 },
     {
       label: t("quality.unknown"),

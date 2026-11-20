@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { BUILTIN, en, type Dict, type DictKey } from "@/lib/dictionaries";
-import { DEFAULT_LANGUAGE, detectLanguage, type Language } from "@/lib/languages";
+import { DEFAULT_LANGUAGE, type Language } from "@/lib/languages";
 import { PLACES, placeText, type PlaceText } from "@/lib/places";
 import { COSTS } from "@/lib/costs";
 import { hash, postJson, storageGet, storageSet } from "@/lib/client";
@@ -100,10 +100,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Restore the saved language (or detect from the browser) on first load.
+  // Restore the language the visitor picked before; otherwise English (the default for foreign tourists).
   useEffect(() => {
     const saved = storageGet<Language>(LANG_KEY);
-    const initial = saved?.name ? saved : detectLanguage(navigator.language);
+    const initial = saved?.name ? saved : DEFAULT_LANGUAGE;
     // localStorage is only available after hydration, so this must run in an effect.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLang(initial);

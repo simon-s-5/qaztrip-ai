@@ -11,6 +11,7 @@
 import type { Place } from "./places";
 import type { GeneralCost } from "./costs";
 import type { DayConditions, Meal } from "./conditions";
+import type { Driver } from "./drivers";
 
 export type AiCostRef = { id: string; qty: number };
 export type AiItem = {
@@ -25,6 +26,8 @@ export type AiItem = {
   meal?: Meal | "none";
   /** True if the item is mainly travelling between places. */
   isTransfer?: boolean;
+  /** Driver from data/drivers.json for this trip ("none" if no driver). */
+  driverId?: string;
 };
 export type AiDay = { day: number; title: string; items: AiItem[] };
 export type AiPlan = { title: string; overview: string; days: AiDay[]; tips: string[]; warnings: string[] };
@@ -32,12 +35,15 @@ export type AiPlan = { title: string; overview: string; days: AiDay[]; tips: str
 export type Range = { min: number; max: number };
 
 /** Why a line costs 0 ₸ (shown as an explanation). */
-export type FreeReason = "lodging-free" | "meal-guest" | "meal-self" | "by-car";
+export type FreeReason = "lodging-free" | "meal-guest" | "meal-self" | "by-car" | "by-driver";
 
 export type Cost = {
-  /** place = place price; general = costs.json; condition = 0 ₸ because of the traveller's situation. */
-  source: "place" | "general" | "condition";
-  /** Place price id, general cost id or FreeReason. */
+  /**
+   * place = place price; general = costs.json; driver = drivers.json (one trip day, whole car);
+   * condition = 0 ₸ because of the traveller's situation.
+   */
+  source: "place" | "general" | "driver" | "condition";
+  /** Place price id, general cost id, driver id or FreeReason. */
   id: string;
   /** How many times (rides, meals, nights); 1 for place prices; km/100 for fuel. */
   qty: number;
@@ -72,9 +78,21 @@ export type PlanValidation = {
   moneyRemoved: number;
   /** Database prices used that are not yet verified by a human. */
   unverifiedPrices: number;
+  /** Items where the AI chose a driver. */
+  driverRefs: number;
+  /** Of those, how many drivers exist in the database and really go to that place. */
+  driverRefsValid: number;
+  /** Items at places whose road is closed now (removed by the server). */
+  roadClosedRemoved: number;
 };
 
-export type Db = { places: Place[]; costs: GeneralCost[] };
+export type Db = { places: Place[]; costs: GeneralCost[]; drivers?: Driver[] };
+
+/** A driver's route covers the item: its place, or (for a transfer / non-place item) a place visited that day. */
+function driverCovers(d: Driver, placeId: string | undefined, dayPlaces: Set<string>, transferLike: boolean) {
+  if (placeId) return d.routes.includes(placeId);
+  return transferLike && d.routes.some((r) => dayPlaces.has(r));
+}
 
 const MONEY_RE =
   /(?:₸|\$|€|USD|KZT)\s?\d[\d\s.,]*|\d[\d\s.,]*\s?(?:₸|тг\.?|тенге|теңге|tenge|KZT|USD|\$|€|доллар\w*|dollars?)/giu;
@@ -120,6 +138,8 @@ export function validatePlan(
   const travellers = Math.min(MAX_TRAVELLERS, Math.max(1, Math.round(opts.travellers)));
   const places = new Map(db.places.map((p) => [p.id, p]));
   const costs = new Map(db.costs.map((c) => [c.id, c]));
+  const drivers = new Map((db.drivers ?? []).map((d) => [d.id, d]));
+  const roadClosed = new Set<string>();
   const v: PlanValidation = {
     daysRequested: opts.days,
     daysReturned: plan.days.length,
@@ -131,6 +151,9 @@ export function validatePlan(
     priceRefsValid: 0,
     moneyRemoved: 0,
     unverifiedPrices: 0,
+    driverRefs: 0,
+    driverRefsValid: 0,
+    roadClosedRemoved: 0,
   };
 
   const strip = (s: string) =>
@@ -171,8 +194,25 @@ export function validatePlan(
     let dayGroup = ZERO;
     let dayUnknown = 0;
     let farthest = 0;
+    const carDay = dc?.transport === "rental" || dc?.transport === "own";
 
-    const items = d.items.slice(0, 12).map((it) => {
+    // Places whose road is closed now are not recommended: the server removes them even if the AI included them.
+    const dayItems = d.items.slice(0, 12).filter((it) => {
+      const p = places.get(it.placeId);
+      if (p?.roadStatus?.status !== "closed") return true;
+      v.roadClosedRemoved++;
+      roadClosed.add(p.id);
+      return false;
+    });
+    const dayPlaces = new Set(dayItems.map((it) => it.placeId).filter((id) => places.has(id)));
+    // A driver is paid once per day (whole car, fuel included); other items of that day are covered by it.
+    const chargedDrivers = new Set<string>();
+    const dayHasDriver = !carDay && dayItems.some((it) => {
+      const dr = drivers.get(it.driverId ?? "");
+      return dr && driverCovers(dr, places.get(it.placeId)?.id, dayPlaces, Boolean(it.isTransfer) || it.placeId === "none");
+    });
+
+    const items = dayItems.map((it) => {
       v.items++;
       let place: Place | undefined;
       if (it.placeId && it.placeId !== "none") {
@@ -193,6 +233,7 @@ export function validatePlan(
         const p = place?.prices.find((x) => x.id === id);
         if (!p) continue; // invented id → dropped
         v.priceRefsValid++;
+        if (dayHasDriver && id === "tour") continue; // a tour includes transport: not paid twice on a driver day
         itemCosts.push({
           source: "place",
           id,
@@ -250,8 +291,37 @@ export function validatePlan(
         }
       }
 
+      // 4) Driver chosen by the AI (by id); the price comes from drivers.json, split by the server.
+      let driverId: string | null = null;
+      if (it.driverId && it.driverId !== "none") {
+        v.driverRefs++;
+        const dr = drivers.get(it.driverId);
+        const covers = dr && driverCovers(dr, place?.id, dayPlaces, Boolean(it.isTransfer) || it.placeId === "none");
+        if (dr && covers) {
+          v.driverRefsValid++;
+          if (carDay) rideByCar = true; // they drive themselves that day: no driver
+          else {
+            driverId = dr.id;
+            if (chargedDrivers.has(dr.id)) {
+              // Already paid today: only say so when the item has no other cost (not next to a meal price).
+              if (itemCosts.length === 0) itemCosts.push(free("by-driver"));
+            } else {
+              chargedDrivers.add(dr.id);
+              itemCosts.push({
+                source: "driver",
+                id: dr.id,
+                qty: 1,
+                unit: "vehicle",
+                capacity: dr.seats,
+                ...amount(dr.pricePerTrip, "vehicle", dr.seats, 1, travellers),
+                verified: dr.verified,
+              });
+            }
+          }
+        }
+      }
+
       // A ride replaced by the day's car is not "unknown": its cost is in the day's car costs.
-      const carDay = dc?.transport === "rental" || dc?.transport === "own";
       if (itemCosts.length === 0 && (rideByCar || (carDay && it.isTransfer))) itemCosts.push(free("by-car"));
 
       v.unverifiedPrices += itemCosts.filter((c) => !c.verified).length;
@@ -267,6 +337,8 @@ export function validatePlan(
       return {
         time: strip(it.time),
         placeId: place ? place.id : null,
+        driverId,
+        road: place?.roadStatus?.status ?? null,
         meal: mealSlot,
         activity: strip(it.activity),
         transport: strip(it.transport),
@@ -322,6 +394,8 @@ export function validatePlan(
       days,
       tips: plan.tips.map(strip),
       warnings: plan.warnings.map(strip),
+      /** Places removed because their road is closed now. */
+      roadClosed: [...roadClosed],
     },
     totals: { perPerson: tripPerPerson, group: tripGroup, unknownCount: tripUnknown },
     travellers,

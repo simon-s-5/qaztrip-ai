@@ -10,6 +10,7 @@
     "howToGet": "About 3–3.5 hours by car east of Almaty. No regular public bus goes to the viewpoint: take a group day tour, hire a car with a driver or rent a car.",
     "season": "April–June and September–October are best. Summer is very hot in the canyon; winter is possible but cold and windy.",
     "durationHint": "Full day from Almaty (often combined with Kolsai and Kaindy on a 2-day trip)",
+    "roadStatus": {"status":"open","note":"Paved road to the Valley of Castles. In winter the walk down can be icy.","lastChecked":"2026-11-20","source":"Initial estimate (AI-assisted draft) — to be verified by the team","verified":false},
     "coordinates": { "lat": 43.353, "lng": 79.077 },
     "prices": [
       { "id": "entry", "label": "National park entry (per adult)", "min": 1000, "max": 2000, "currency": "KZT", "verified": false },
@@ -29,6 +30,7 @@
     "howToGet": "About 5–6 hours by car from Almaty via Saty village. Usually visited on a 2–3 day tour together with Kaindy Lake and Charyn Canyon.",
     "season": "June–September is best. Mountain roads and trails can be closed or icy from November to April.",
     "durationHint": "2–3 days from Almaty (overnight in Saty)",
+    "roadStatus": {"status":"limited","note":"The road to Saty and the lower lake is usually open; the trail to the middle lake is often snowy or closed from November to April.","lastChecked":"2026-11-20","source":"Initial estimate (AI-assisted draft) — to be verified by the team","verified":false},
     "coordinates": { "lat": 42.933, "lng": 78.324 },
     "prices": [
       { "id": "entry", "label": "National park entry (per adult)", "min": 1000, "max": 2000, "currency": "KZT", "verified": false },
@@ -48,6 +50,7 @@
     "howToGet": "From Saty village the last 12 km are a rough dirt road: locals offer 4x4 transfers or you can hike/ride a horse. Usually combined with Kolsai Lakes.",
     "season": "June–September. In winter the lake freezes and access is difficult.",
     "durationHint": "Half day from Saty",
+    "roadStatus": {"status":"limited","note":"The last 12 km of dirt road from Saty are snowy and icy in winter: 4x4 only, sometimes impassable after snowfall.","lastChecked":"2026-11-20","source":"Initial estimate (AI-assisted draft) — to be verified by the team","verified":false},
     "coordinates": { "lat": 42.985, "lng": 78.466 },
     "prices": [
       { "id": "entry", "label": "National park entry (per adult)", "min": 1000, "max": 2000, "currency": "KZT", "verified": false },
@@ -85,6 +88,7 @@
     "howToGet": "Go to Medeu (bus No. 12 or taxi), then take the gondola up to Shymbulak and further chairlifts to Talgar Pass.",
     "season": "Skiing: about December–April. Summer (June–September) for views and hiking.",
     "durationHint": "Half day to full day",
+    "roadStatus": {"status":"open","note":"Paved road and gondola from Medeu work all year. After snowfall cars may need winter tyres or chains.","lastChecked":"2026-11-20","source":"Initial estimate (AI-assisted draft) — to be verified by the team","verified":false},
     "coordinates": { "lat": 43.1283, "lng": 77.0808 },
     "prices": [
       { "id": "gondola", "label": "Gondola Medeu – Shymbulak – Talgar Pass, return (adult)", "min": 8000, "max": 15000, "currency": "KZT", "verified": false },
@@ -104,6 +108,7 @@
     "howToGet": "About 1–1.5 hours by taxi or car via the Big Almaty Gorge road. The last part of the road may be closed to private cars; check the current rules before you go.",
     "season": "June–October is best; the water colour is most vivid in summer. Road access can be limited in winter and spring.",
     "durationHint": "Half day",
+    "roadStatus": {"status":"limited","note":"Mountain road above the checkpoint. In winter and spring access by car can be restricted; the lake is frozen.","lastChecked":"2026-11-20","source":"Initial estimate (AI-assisted draft) — to be verified by the team","verified":false},
     "coordinates": { "lat": 43.0505, "lng": 76.985 },
     "prices": [
       { "id": "entry", "label": "National park entry (per adult)", "min": 1000, "max": 1500, "currency": "KZT", "verified": false }
@@ -194,6 +199,7 @@
     "howToGet": "About 4 hours by car from Almaty. A permit from the park office in Basshi village is required; most visitors go with a tour or a 4x4 with a driver.",
     "season": "April–June and September–October. Summer is extremely hot.",
     "durationHint": "1–2 days",
+    "roadStatus": {"status":"open","note":"Long gravel roads inside the park; a park permit is needed.","lastChecked":"2026-11-20","source":"Initial estimate (AI-assisted draft) — to be verified by the team","verified":false},
     "coordinates": { "lat": 43.862, "lng": 78.565 },
     "prices": [
       { "id": "entry", "label": "Park permit (per adult)", "min": 1500, "max": 3000, "currency": "KZT", "verified": false },
@@ -231,6 +237,7 @@
     "howToGet": "About 1.5 hours by car east of Almaty via Turgen village. Taxi or tour recommended.",
     "season": "May–October is best. Waterfalls freeze in winter (ice climbing).",
     "durationHint": "Full day",
+    "roadStatus": {"status":"limited","note":"The gorge road is open to the lower waterfalls; upper sections can be snowy in winter.","lastChecked":"2026-11-20","source":"Initial estimate (AI-assisted draft) — to be verified by the team","verified":false},
     "coordinates": { "lat": 43.358, "lng": 77.644 },
     "prices": [
       { "id": "entry", "label": "National park entry (per adult)", "min": 1000, "max": 2000, "currency": "KZT", "verified": false }
@@ -249,6 +256,7 @@
     "howToGet": "Through Turgen Gorge on a rough mountain road; a 4x4 or a tour is strongly recommended.",
     "season": "June–September.",
     "durationHint": "Full day",
+    "roadStatus": {"status":"closed","note":"High mountain gravel road (about 2,500 m) is usually snowed in from November to May.","lastChecked":"2026-11-20","source":"Initial estimate (AI-assisted draft) — to be verified by the team","verified":false},
     "coordinates": { "lat": 43.04, "lng": 77.94 },
     "prices": [],
     "sourceName": "Wikipedia (Ile-Alatau National Park)",
@@ -265,6 +273,7 @@
     "howToGet": "About 1–1.5 hours by car or suburban bus from Almaty to Esik, then taxi to the lake.",
     "season": "Museum all year; the lake is best May–October.",
     "durationHint": "Half day to full day",
+    "roadStatus": {"status":"open","note":"Paved road to Esik town and the lake.","lastChecked":"2026-11-20","source":"Initial estimate (AI-assisted draft) — to be verified by the team","verified":false},
     "coordinates": { "lat": 43.255, "lng": 77.484 },
     "prices": [
       { "id": "museum", "label": "Issyk Kurgan museum ticket (adult)", "min": 500, "max": 1500, "currency": "KZT", "verified": false }
@@ -283,6 +292,7 @@
     "howToGet": "About 30 minutes by taxi from the centre to the start of the trail in Butakovka village.",
     "season": "May–October.",
     "durationHint": "Half day",
+    "roadStatus": {"status":"open","note":"City road to the gorge. Trails can be icy in winter.","lastChecked":"2026-11-20","source":"Initial estimate (AI-assisted draft) — to be verified by the team","verified":false},
     "coordinates": { "lat": 43.195, "lng": 77.03 },
     "prices": [],
     "sourceName": "Wikipedia (Ile-Alatau National Park)",
@@ -299,6 +309,7 @@
     "howToGet": "About 1–1.5 hours by car or intercity bus/minibus from Almaty to Qonaev.",
     "season": "June–August for swimming.",
     "durationHint": "Full day",
+    "roadStatus": {"status":"open","note":"Highway from Almaty, open all year.","lastChecked":"2026-11-20","source":"Initial estimate (AI-assisted draft) — to be verified by the team","verified":false},
     "coordinates": { "lat": 43.88, "lng": 77.1 },
     "prices": [],
     "sourceName": "Wikipedia",

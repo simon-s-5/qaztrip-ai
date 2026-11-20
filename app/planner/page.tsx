@@ -7,7 +7,10 @@ import { AiBadge, UnverifiedTag } from "@/components/AiBadge";
 import { Icon } from "@/components/Icon";
 import { QualityCheck } from "@/components/QualityCheck";
 import { errorKey, postJson } from "@/lib/client";
-import { getPlace } from "@/lib/places";
+import { FEATURED_PLACE_IDS, getPlace, PLACES } from "@/lib/places";
+import { getDriver } from "@/lib/drivers";
+import { DemoTag, RoadBadge, RoadInfo } from "@/components/Drivers";
+import { RequestDriver } from "@/components/RequestDriver";
 import type { DictKey } from "@/lib/dictionaries";
 import type { Cost, PlanValidation, Range } from "@/lib/planValidation";
 import type { BudgetAdvice, Suggestion } from "@/lib/budgetAdvice";
@@ -28,10 +31,14 @@ import type { Lockable } from "@/lib/conditions";
 const INTERESTS = ["nature", "hiking", "culture", "history", "food", "city", "winter", "relax", "photo", "family"] as const;
 const CITIES = ["Almaty", "Qonaev", "Talgar", "Esik", "Saty"];
 const MAX_TRAVELLERS = 20;
+/** Nature places for "places you want to see": the four featured trips first. */
+const NATURE_PLACES = PLACES.filter((p) => p.roadStatus);
 
 type Item = {
   time: string;
   placeId: string | null;
+  driverId?: string | null;
+  road?: "open" | "limited" | "closed" | null;
   meal: string | null;
   activity: string;
   transport: string;
@@ -48,7 +55,7 @@ type Day = {
   unknownCount: number;
 };
 type PlanResponse = {
-  plan: { title: string; overview: string; days: Day[]; tips: string[]; warnings: string[] };
+  plan: { title: string; overview: string; days: Day[]; tips: string[]; warnings: string[]; roadClosed?: string[] };
   totals: { perPerson: Range; group: Range; unknownCount: number };
   travellers: number;
   budget: number;
@@ -100,6 +107,8 @@ export default function PlannerPage() {
   const [interests, setInterests] = useState<string[]>(["nature", "city"]);
   const [startCity, setStartCity] = useState("Almaty");
   const [extra, setExtra] = useState("");
+  const [mustSee, setMustSee] = useState<string[]>([]);
+  const [showAllPlaces, setShowAllPlaces] = useState(false);
   const [lodging, setLodging] = useState<Lodging>(DEFAULT_FORM.lodging);
   const [transport, setTransport] = useState<Transport>(DEFAULT_FORM.transport);
   const [food, setFood] = useState<FoodForm>(DEFAULT_FORM.food);
@@ -165,6 +174,7 @@ export default function PlannerPage() {
         transport,
         food,
         explicit: touched,
+        places: mustSee,
       });
       setResult(data);
       requestAnimationFrame(() => document.getElementById("plan-result")?.scrollIntoView({ behavior: "smooth" }));
@@ -181,6 +191,10 @@ export default function PlannerPage() {
   function costName(c: Cost, placeId: string | null) {
     if (c.source === "general") return costLabel(c.id);
     if (c.source === "condition") return t(`free.${c.id}` as DictKey);
+    if (c.source === "driver") {
+      const d = getDriver(c.id);
+      return d ? t("planner.driver", { name: d.name, vehicle: t(`vehicle.${d.vehicleType}` as DictKey) }) : c.id;
+    }
     return (placeId && placeText(placeId).priceLabels[c.id]) || c.id;
   }
 
@@ -199,6 +213,7 @@ export default function PlannerPage() {
           :
         </span>
         <span className="font-semibold tabular-nums">{isFree ? formatKzt(0) : range(c.perPerson)}</span>
+        {c.source === "driver" && getDriver(c.id)?.isDemo && <DemoTag />}
         {!c.verified && <UnverifiedTag />}
         {n > 1 && c.unit !== "person" && (
           <span className="w-full ps-6 text-xs text-muted">{t("planner.shared", { units: c.units })}</span>
@@ -267,6 +282,32 @@ export default function PlannerPage() {
             ))}
           </datalist>
         </label>
+
+        <fieldset>
+          <legend className="mb-1.5 text-sm font-medium">{t("planner.mustSee")}</legend>
+          <div className="flex flex-wrap gap-2">
+            {NATURE_PLACES.filter((p) => showAllPlaces || FEATURED_PLACE_IDS.includes(p.id)).map((p) => {
+              const closed = p.roadStatus?.status === "closed";
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  className="chip disabled:opacity-50"
+                  aria-pressed={mustSee.includes(p.id)}
+                  disabled={closed}
+                  title={closed ? t("road.closed") : undefined}
+                  onClick={() => setMustSee((s) => (s.includes(p.id) ? s.filter((x) => x !== p.id) : [...s, p.id]))}
+                >
+                  {placeText(p.id).name}
+                  {p.roadStatus && p.roadStatus.status !== "open" && <RoadBadge status={p.roadStatus.status} />}
+                </button>
+              );
+            })}
+            <button type="button" className="chip text-muted" onClick={() => setShowAllPlaces((v) => !v)}>
+              {showAllPlaces ? t("planner.fewerPlaces") : t("planner.morePlaces")}
+            </button>
+          </div>
+        </fieldset>
 
         <ChoiceGroup
           label={t("cond.lodging")}
@@ -393,6 +434,11 @@ export default function PlannerPage() {
                           ) : null}
                           {place ? " — " : ""}
                           {it.activity}
+                          {it.road && it.road !== "open" && (
+                            <span className="ms-2 align-middle">
+                              <RoadBadge status={it.road} />
+                            </span>
+                          )}
                         </p>
                       </div>
                       {it.transport && (
@@ -453,6 +499,24 @@ export default function PlannerPage() {
               </footer>
             </article>
           ))}
+
+          <RoadsCard result={result} />
+
+          <RequestDriver
+            title={result.plan.title}
+            totalDays={result.validation.daysRequested}
+            travellers={result.travellers}
+            days={result.plan.days.map((d) => {
+              const ids = [...new Set(d.items.map((it) => it.placeId).filter((id): id is string => Boolean(id)))];
+              const driverId = d.items.find((it) => it.driverId)?.driverId;
+              const driver = getDriver(driverId);
+              return {
+                day: d.day,
+                places: ids.map((id) => getPlace(id)?.name ?? id),
+                driver: driver ? `${driver.name}${driver.isDemo ? " (demo profile)" : ""}` : null,
+              };
+            })}
+          />
 
           {result.plan.warnings.length > 0 && (
             <ListCard icon="alert" title={t("planner.warnings")} items={result.plan.warnings} tone="warn" />
@@ -688,6 +752,37 @@ function AdviceCard({ advice }: { advice: BudgetAdvice }) {
       )}
       <p className="text-xs text-muted">{t("budget.calcNote")}</p>
     </div>
+  );
+}
+
+/** Road conditions of the places on the route (from our database), and places removed because the road is closed. */
+function RoadsCard({ result }: { result: PlanResponse }) {
+  const { t, placeText } = usePlacesI18n();
+  const ids = [...new Set(result.plan.days.flatMap((d) => d.items.map((it) => it.placeId)))];
+  const onRoute = ids.map((id) => (id ? getPlace(id) : undefined)).filter((p) => p?.roadStatus);
+  const closed = result.plan.roadClosed ?? [];
+  if (onRoute.length === 0 && closed.length === 0) return null;
+  return (
+    <section className="card space-y-3 p-4">
+      <h3 className="flex items-center gap-2 font-semibold">
+        <Icon name="alert" className="h-5 w-5 text-accent" />
+        {t("road.routeTitle")}
+      </h3>
+      {closed.length > 0 && (
+        <p role="status" className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger-ink">
+          {t("road.removed", { places: closed.map((id) => placeText(id)?.name ?? id).join(", ") })}
+        </p>
+      )}
+      <ul className="space-y-3">
+        {onRoute.map((p) => (
+          <li key={p!.id} className="space-y-1">
+            <p className="text-sm font-medium">{placeText(p!.id).name}</p>
+            <RoadInfo road={p!.roadStatus!} note={placeText(p!.id).roadNote} />
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-muted">{t("road.note")}</p>
+    </section>
   );
 }
 

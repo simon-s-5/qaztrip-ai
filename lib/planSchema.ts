@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { PLACE_IDS } from "./places";
 import { COST_IDS } from "./costs";
+import { DRIVER_IDS } from "./drivers";
 import { LOCKABLE, LODGING, MEAL_MODES, MEAL_PLACES, MEALS, OVERRIDE_FIELDS, TRANSPORT } from "./conditions";
 import { MAX_QTY } from "./planValidation";
 
@@ -68,6 +69,11 @@ export const PLAN_JSON_SCHEMA = {
                 placeId: { type: "string", enum: [...PLACE_IDS, "none"] },
                 meal: { type: "string", enum: [...MEALS, "none"] },
                 isTransfer: { type: "boolean", description: "true if this item is mainly travelling from one place to another" },
+                driverId: {
+                  type: "string",
+                  enum: [...DRIVER_IDS, "none"],
+                  description: "Driver from DRIVERS for a trip to a nature place, or none",
+                },
                 activity: str,
                 transport: { type: "string", description: "How to get there, no prices" },
                 notes: str,
@@ -94,7 +100,7 @@ export const PLAN_JSON_SCHEMA = {
                   },
                 },
               },
-              required: ["time", "placeId", "meal", "isTransfer", "activity", "transport", "notes", "priceIds", "generalCosts"],
+              required: ["time", "placeId", "meal", "isTransfer", "driverId", "activity", "transport", "notes", "priceIds", "generalCosts"],
             },
           },
         },
@@ -125,6 +131,7 @@ export const AiPlanZ = z.object({
               placeId: text(60),
               meal: z.enum([...MEALS, "none"]).catch("none"),
               isTransfer: z.boolean().catch(false),
+              driverId: z.string().max(60).catch("none").default("none"),
               activity: text(1000),
               transport: text(1000),
               notes: text(1000),

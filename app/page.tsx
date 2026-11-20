@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useI18n } from "@/components/LanguageProvider";
+import { usePlacesI18n } from "@/components/LanguageProvider";
+import { RoadBadge } from "@/components/Drivers";
 import { LanguagePicker } from "@/components/LanguagePicker";
 import { Icon } from "@/components/Icon";
-import { PLACES } from "@/lib/places";
+import { FEATURED_PLACE_IDS, getPlace, PLACES } from "@/lib/places";
 import type { DictKey } from "@/lib/dictionaries";
 
 const FEATURES: { href: string; icon: string; title: DictKey; desc: DictKey }[] = [
@@ -15,7 +16,8 @@ const FEATURES: { href: string; icon: string; title: DictKey; desc: DictKey }[] 
 ];
 
 export default function Home() {
-  const { t } = useI18n();
+  const { t, placeText } = usePlacesI18n();
+  const featured = FEATURED_PLACE_IDS.map((id) => getPlace(id)!);
   return (
     <div className="space-y-6">
       <section className="relative overflow-hidden rounded-3xl bg-brand px-5 pb-6 pt-7 text-brand-ink">
@@ -40,6 +42,26 @@ export default function Home() {
           <Icon name="route" className="h-4 w-4" />
           {t("home.start")}
         </Link>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-lg font-semibold">{t("home.featured")}</h2>
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {featured.map((p) => (
+            <li key={p.id}>
+              <Link href={`/places/${p.id}`} className="card flex h-full flex-col gap-1.5 p-3 transition hover:border-brand">
+                <span className="font-semibold leading-snug">{placeText(p.id).name}</span>
+                <span className="text-xs text-muted">{t("places.distance", { n: p.distanceFromAlmatyKm })}</span>
+                {p.roadStatus && (
+                  <span className="mt-auto pt-1">
+                    <RoadBadge status={p.roadStatus.status} />
+                  </span>
+                )}
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-muted">{t("home.demoNote")}</p>
       </section>
 
       <LanguagePicker />

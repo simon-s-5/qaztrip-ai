@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { geminiJson, MissingKeyError } from "@/lib/gemini";
-import { PLACE_IDS, placesForPrompt } from "@/lib/places";
+import { getPlace, isRoadClosed, PLACE_IDS, placesForPrompt } from "@/lib/places";
+import { driversForPrompt } from "@/lib/drivers";
 import { costsForPrompt } from "@/lib/costs";
 import { MAX_TRAVELLERS } from "@/lib/planValidation";
 import { AiAnswerZ, PLAN_JSON_SCHEMA } from "@/lib/planSchema";
@@ -33,6 +34,8 @@ const Body = z.object({
   food: z.enum(FOOD_FORM).optional().default("buy"),
   /** Form fields the user actually changed: explicit wishes (untouched defaults are not). */
   explicit: z.array(z.enum(LOCKABLE)).max(3).optional().default([]),
+  /** Places picked in the form ("places you want to see"): explicit wishes. */
+  places: z.array(z.enum(PLACE_IDS as [string, ...string[]])).max(10).optional().default([]),
 });
 
 function describe(c: Conditions) {
@@ -51,6 +54,8 @@ export async function POST(req: Request) {
     { lodging: input.lodging, transport: input.transport, food: input.food },
     input.explicit,
   );
+  // Picked places are wishes, except places whose road is closed now (never recommended).
+  const mustSee = [...new Set(input.places)].filter((id) => !isRoadClosed(getPlace(id)));
   const month = new Date().toLocaleString("en", { month: "long", timeZone: "Asia/Almaty" });
 
   const system = `You are QazTrip AI, a careful travel planner for Almaty city and the Almaty region of Kazakhstan.
@@ -77,14 +82,22 @@ STEP 2 — the plan (follow the conditions):
    Do NOT add lodging, car rental, fuel or groceries — the server adds them from the conditions.
    "qty" is counted for ONE traveller (e.g. one lunch = qty 1, two rides = qty 2). NEVER multiply by the group size: the server does that.
 6. A place visit that is a tour already includes its transport.
-7. Be realistic about distance and time: places over 150 km from Almaty usually need a full day or an overnight stay.
-8. Current month is ${month}. Respect each place's season and add a warning if a place is out of season.
-9. If you are not sure about a fact, say it is unknown instead of guessing.
-10. Write ALL text in ${input.language}.`;
+   DRIVERS: for a trip to a nature place outside the city on a day whose transport is public or taxi, choose ONE driver from DRIVERS
+   whose "routes" include that place (enough seats for the group if possible; prefer one who speaks the traveller's language).
+   Put its id in "driverId" on the visit item and on the transfer items of that trip. With a driver, do NOT add the place's "tour" price
+   or city rides for that trip — the server adds the driver's day price. On rental or own-car days, and when no driver fits, driverId = "none".
+7. ROADS: a place whose "road" is CLOSED must NOT be included. If it is LIMITED, you may include it but add a warning with the reason.
+   If a wished place is closed, say so in the warnings instead of including it.
+8. Be realistic about distance and time: places over 150 km from Almaty usually need a full day or an overnight stay.
+9. Current month is ${month}. Respect each place's season and add a warning if a place is out of season.
+10. If you are not sure about a fact, say it is unknown instead of guessing.
+11. Write ALL text in ${input.language}.`;
 
   const prompt = `DATABASE (places):\n${JSON.stringify(placesForPrompt())}
 
 GENERAL COSTS:\n${JSON.stringify(costsForPrompt())}
+
+DRIVERS (our database; choose only by id):\n${JSON.stringify(driversForPrompt())}
 
 TRAVELLERS:
 - Group size: ${input.travellers} ${input.travellers === 1 ? "person" : "people travelling together"}
@@ -95,6 +108,7 @@ TRAVELLERS:
 
 FORM CONDITIONS: ${describe(formConditions)}
 EXTRA WISHES (free text, wins over the form): ${hasText ? input.extra : "none"}
+MUST-VISIT PLACES picked in the form (explicit wishes, put them into wishPlaces): ${mustSee.join(", ") || "none"}
 
 Return exactly ${input.days} days.`;
 
@@ -113,7 +127,8 @@ Return exactly ${input.days} days.`;
     const { conditions: aiConditions, ...firstPlan } = ai.data;
 
     // Without free text the form is the source of truth; with text, the AI's interpretation (text wins).
-    const interpreted = chooseConditions(formConditions, aiConditions, hasText, input.days, PLACE_IDS);
+    const chosen = chooseConditions(formConditions, aiConditions, hasText, input.days, PLACE_IDS);
+    const interpreted = { ...chosen, wishPlaces: [...new Set([...mustSee, ...chosen.wishPlaces])].slice(0, 10) };
 
     // 2) Server: validate against the databases and calculate costs from the conditions.
     //    Over budget → things the traveller did NOT ask for are made cheaper (no AI); explicit wishes are kept.
