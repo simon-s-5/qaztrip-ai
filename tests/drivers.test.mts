@@ -3,7 +3,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { validatePlan, type AiItem, type AiPlan } from "../lib/planValidation.ts";
-import { formToConditions, resolveConditions } from "../lib/conditions.ts";
+import { defaultTransport, FOOD_FORM, formToConditions, LODGING, resolveConditions, TRANSPORT, type Transport } from "../lib/conditions.ts";
+import { cheapenUnlocked } from "../lib/wishes.ts";
 import { requestMessage, whatsappLink, whatsappNumber } from "../lib/request.ts";
 
 const read = (p: string) => JSON.parse(readFileSync(new URL(p, import.meta.url), "utf8"));
@@ -20,7 +21,7 @@ function item(over: Partial<AiItem>): AiItem {
 function plan(days: AiItem[][]): AiPlan {
   return { title: "t", overview: "o", days: days.map((items, i) => ({ day: i + 1, title: "d", items })), tips: [], warnings: [] };
 }
-const conditions = (transport: "public" | "taxi" | "rental" | "own", days = 1) =>
+const conditions = (transport: Transport, days = 1) =>
   resolveConditions({ ...formToConditions({ lodging: "free", transport, food: "buy" }) }, days);
 
 // ---------- drivers.json: privacy and demo rules ----------
@@ -189,4 +190,50 @@ test("request message: places by day, days, group size, language; link is wa.me 
 test("request message ignores a malformed date", () => {
   const msg = requestMessage({ title: "", days: [], totalDays: 1, travellers: 1, language: "English", date: "tomorrow" });
   assert.doesNotMatch(msg, /date/i);
+});
+
+// ---------- "Private driver" in "Getting around" ----------
+
+test("form order: Private driver first; relatives/own home and some meals as guests last", () => {
+  assert.equal(TRANSPORT[0], "driver");
+  assert.equal(LODGING.at(-1), "free");
+  assert.equal(FOOD_FORM.at(-1), "partly");
+});
+
+test("Private driver is the default when a nature place is picked, unless the traveller chose the transport", () => {
+  assert.equal(defaultTransport("public", [], true), "driver");
+  assert.equal(defaultTransport("public", [], false), "public");
+  assert.equal(defaultTransport("taxi", ["transport"], true), "taxi");
+  assert.equal(defaultTransport("rental", ["lodging", "transport"], true), "rental");
+});
+
+test("driver day: the driver is paid once from drivers.json; rides and transfers are covered (0 ₸ 'by-driver')", () => {
+  const p = plan([[
+    item({ isTransfer: true, generalCosts: [{ id: "taxi-city", qty: 2 }] }),
+    item({ placeId: "kolsai", driverId: "demo-aidos", priceIds: ["tour"] }),
+    item({ isTransfer: true }),
+  ]]);
+  const r = validatePlan(p, db, { days: 1, travellers: 2, conditions: conditions("driver") });
+  const items = r.plan.days[0].items;
+  assert.equal(items[0].costs![0].id, "by-driver");
+  assert.equal(items[2].costs![0].id, "by-driver");
+  const ids = items[1].costs!.map((c) => c.id);
+  assert.ok(ids.includes("demo-aidos") && !ids.includes("tour"));
+  assert.equal(r.totals.perPerson.min, driver("demo-aidos").pricePerTrip.min / 2);
+  assert.equal(r.totals.unknownCount, 0);
+});
+
+test("driver day without a covering driver (city day): rides are a taxi, never a bus; no driver cost", () => {
+  const p = plan([[item({ isTransfer: true, generalCosts: [{ id: "bus", qty: 2 }] })]]);
+  const r = validatePlan(p, db, { days: 1, travellers: 1, conditions: conditions("driver") });
+  const c = r.plan.days[0].items[0].costs!;
+  assert.deepEqual(c.map((x) => x.id), ["taxi-city"]);
+});
+
+test("over budget, the server never swaps the private driver for a self-drive car on its own", () => {
+  const base = { ...formToConditions({ lodging: "hostel", transport: "driver", food: "buy" }) };
+  const evaluate = (c: typeof base) => (c.transport === "driver" ? 100000 : 10000); // anything else looks cheaper
+  const { conditions: after, changes } = cheapenUnlocked(base, evaluate);
+  assert.equal(after.transport, "driver");
+  assert.ok(!changes.some((x) => x.field === "transport"));
 });

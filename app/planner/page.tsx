@@ -11,11 +11,13 @@ import { FEATURED_PLACE_IDS, getPlace, PLACES } from "@/lib/places";
 import { getDriver } from "@/lib/drivers";
 import { DemoTag, RoadBadge, RoadInfo } from "@/components/Drivers";
 import { RequestDriver } from "@/components/RequestDriver";
+import { KZT_PER_USD } from "@/lib/currency";
 import type { DictKey } from "@/lib/dictionaries";
 import type { Cost, PlanValidation, Range } from "@/lib/planValidation";
 import type { BudgetAdvice, Suggestion } from "@/lib/budgetAdvice";
 import {
   DEFAULT_FORM,
+  defaultTransport,
   FOOD_FORM,
   LODGING,
   TRANSPORT,
@@ -100,7 +102,7 @@ function ChoiceGroup<T extends string>({
 }
 
 export default function PlannerPage() {
-  const { t, language, formatKzt, placeText, costLabel } = usePlacesI18n();
+  const { t, language, formatKzt, formatUsd, money, placeText, costLabel } = usePlacesI18n();
   const [days, setDays] = useState(3);
   const [travellers, setTravellers] = useState(1);
   const [budget, setBudget] = useState("100000");
@@ -115,6 +117,8 @@ export default function PlannerPage() {
   // Form fields the user actually changed = explicit wishes (untouched defaults are not).
   const [touched, setTouched] = useState<Lockable[]>([]);
   const touch = (f: Lockable) => setTouched((s) => (s.includes(f) ? s : [...s, f]));
+  // A nature place picked and transport not chosen by hand → private local driver by default.
+  const effectiveTransport = defaultTransport(transport, touched, mustSee.length > 0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<DictKey | null>(null);
   const [result, setResult] = useState<PlanResponse | null>(null);
@@ -171,7 +175,7 @@ export default function PlannerPage() {
         extra: extra.trim(),
         language: language.name,
         lodging,
-        transport,
+        transport: effectiveTransport,
         food,
         explicit: touched,
         places: mustSee,
@@ -186,7 +190,9 @@ export default function PlannerPage() {
   }
 
   const range = (r: Range) =>
-    r.max === 0 ? t("common.free") : r.min === r.max ? formatKzt(r.min) : `${formatKzt(r.min)} – ${formatKzt(r.max)}`;
+    r.max === 0
+      ? t("common.free")
+      : `${r.min === r.max ? formatKzt(r.min) : `${formatKzt(r.min)} – ${formatKzt(r.max)}`} (${formatUsd(r.min, r.max)})`;
 
   function costName(c: Cost, placeId: string | null) {
     if (c.source === "general") return costLabel(c.id);
@@ -212,7 +218,7 @@ export default function PlannerPage() {
           )}
           :
         </span>
-        <span className="font-semibold tabular-nums">{isFree ? formatKzt(0) : range(c.perPerson)}</span>
+        <span className="font-semibold tabular-nums">{isFree ? money(0) : range(c.perPerson)}</span>
         {c.source === "driver" && getDriver(c.id)?.isDemo && <DemoTag />}
         {!c.verified && <UnverifiedTag />}
         {n > 1 && c.unit !== "person" && (
@@ -243,9 +249,15 @@ export default function PlannerPage() {
             onChange={(e) => setBudget(e.target.value.replace(/\D/g, "").slice(0, 9))}
             required
           />
-          {travellers > 1 && Number(budget) > 0 && (
+          {Number(budget) > 0 && (
             <span className="mt-1 block text-xs text-muted">
-              {t("planner.groupBudget")}: {formatKzt(Number(budget) * travellers)}
+              {formatUsd(Number(budget))}
+              {travellers > 1 && (
+                <>
+                  {" · "}
+                  {t("planner.groupBudget")}: {money(Number(budget) * travellers)}
+                </>
+              )}
             </span>
           )}
         </label>
@@ -322,7 +334,7 @@ export default function PlannerPage() {
         <ChoiceGroup
           label={t("cond.transport")}
           options={TRANSPORT}
-          value={transport}
+          value={effectiveTransport}
           onChange={(v) => {
             setTransport(v);
             touch("transport");
@@ -583,7 +595,7 @@ function Stepper({
 }
 
 function BudgetSummary({ result, range }: { result: PlanResponse; range: (r: Range) => string }) {
-  const { t, formatKzt } = usePlacesI18n();
+  const { t, money } = usePlacesI18n();
   const { totals, budget, travellers } = result;
   const over = totals.perPerson.min > budget;
   return (
@@ -596,7 +608,7 @@ function BudgetSummary({ result, range }: { result: PlanResponse; range: (r: Ran
         </div>
         <div className="flex items-center justify-between gap-2">
           <span className="text-muted">{t("planner.budgetLabel")}</span>
-          <span className="font-semibold tabular-nums">{formatKzt(budget)}</span>
+          <span className="font-semibold tabular-nums">{money(budget)}</span>
         </div>
       </div>
 
@@ -609,7 +621,7 @@ function BudgetSummary({ result, range }: { result: PlanResponse; range: (r: Ran
           </div>
           <div className="flex items-center justify-between gap-2">
             <span className="text-muted">{t("planner.groupBudget")}</span>
-            <span className="font-semibold tabular-nums">{formatKzt(budget * travellers)}</span>
+            <span className="font-semibold tabular-nums">{money(budget * travellers)}</span>
           </div>
         </div>
       )}
@@ -638,7 +650,7 @@ function BudgetSummary({ result, range }: { result: PlanResponse; range: (r: Ran
       <p className={`rounded-lg px-3 py-2 ${over ? "bg-danger-soft text-danger-ink" : "bg-brand-soft text-brand"}`}>
         {over
           ? t("planner.overBudget")
-          : t("planner.withinBudget", { amount: formatKzt(Math.max(0, budget - totals.perPerson.min)) })}
+          : t("planner.withinBudget", { amount: money(Math.max(0, budget - totals.perPerson.min)) })}
       </p>
 
       {result.autoChoices && result.autoChoices.length > 0 && <AutoChoicesCard choices={result.autoChoices} />}
@@ -646,6 +658,7 @@ function BudgetSummary({ result, range }: { result: PlanResponse; range: (r: Ran
       {over && result.advice && <AdviceCard advice={result.advice} />}
       <p className="text-xs text-muted">{t("planner.notIncluded")}</p>
       <p className="text-xs text-muted">{t("planner.costSource")}</p>
+      <p className="text-xs text-muted">{t("currency.rate", { rate: KZT_PER_USD })}</p>
     </div>
   );
 }
@@ -661,7 +674,7 @@ function useCondLabels() {
 
 /** Things the traveller did not specify, made cheaper by the server to fit the budget. */
 function AutoChoicesCard({ choices }: { choices: AutoChoice[] }) {
-  const { t, formatKzt } = usePlacesI18n();
+  const { t, money } = usePlacesI18n();
   const l = useCondLabels();
   return (
     <div className="space-y-1.5 rounded-lg border border-line p-3">
@@ -675,7 +688,7 @@ function AutoChoicesCard({ choices }: { choices: AutoChoice[] }) {
                 field: l.field(c.field),
                 from: l.value(c.field, c.from),
                 to: l.value(c.field, c.to),
-                saving: formatKzt(c.saving),
+                saving: money(c.saving),
               })}
             </span>
           </li>
@@ -688,10 +701,10 @@ function AutoChoicesCard({ choices }: { choices: AutoChoice[] }) {
 
 /** Explicit wishes are kept; we show what each costs and the cheaper alternative. */
 function WishCostsCard({ wishes }: { wishes: WishCost[] }) {
-  const { t, formatKzt, placeText } = usePlacesI18n();
+  const { t, money, placeText } = usePlacesI18n();
   const l = useCondLabels();
   const text = (w: WishCost) => {
-    const amounts = { over: formatKzt(w.over), saving: formatKzt(w.saving) };
+    const amounts = { over: money(w.over), saving: money(w.saving) };
     if (w.kind === "place")
       return t("wish.line", { wish: placeText(w.wish)?.name ?? w.wish, alt: t("wish.freePlace"), ...amounts });
     if (w.kind === "override" && w.field)
@@ -722,9 +735,9 @@ function WishCostsCard({ wishes }: { wishes: WishCost[] }) {
 }
 
 function AdviceCard({ advice }: { advice: BudgetAdvice }) {
-  const { t, formatKzt, placeText } = usePlacesI18n();
+  const { t, money, placeText } = usePlacesI18n();
   const text = (s: Suggestion) => {
-    const amount = formatKzt(s.saving);
+    const amount = money(s.saving);
     switch (s.kind) {
       case "fewerDays":
         return t("budget.tip.fewerDays", { n: s.day, amount });
@@ -736,7 +749,7 @@ function AdviceCard({ advice }: { advice: BudgetAdvice }) {
   };
   return (
     <div className="space-y-2 rounded-lg border border-line p-3">
-      <p className="font-semibold">{t("budget.minimum", { amount: formatKzt(advice.minBudget) })}</p>
+      <p className="font-semibold">{t("budget.minimum", { amount: money(advice.minBudget) })}</p>
       {advice.suggestions.length > 0 && (
         <>
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">{t("budget.waysTitle")}</p>

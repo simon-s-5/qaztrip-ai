@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { usePlacesI18n } from "@/components/LanguageProvider";
 import { Icon } from "@/components/Icon";
 import { RoadBadge } from "@/components/Drivers";
+import { Usd } from "@/components/Usd";
 import { PLACES } from "@/lib/places";
 import type { DictKey } from "@/lib/dictionaries";
 
@@ -94,7 +95,7 @@ export default function PlacesPage() {
                     <span className="font-medium">{t("common.free")}</span>
                   ) : (
                     <span className="font-medium tabular-nums">
-                      {formatKzt(minPrice)}+ <span className="text-xs font-normal text-warn-ink">· {t("common.unverified")}</span>
+                      {formatKzt(minPrice)}+<Usd min={minPrice} /> <span className="text-xs font-normal text-warn-ink">· {t("common.unverified")}</span>
                     </span>
                   )}
                 </p>

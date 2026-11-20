@@ -3,6 +3,7 @@
 import { useI18n } from "./LanguageProvider";
 import { Icon } from "./Icon";
 import { UnverifiedTag } from "./AiBadge";
+import { Usd } from "./Usd";
 import type { Driver } from "@/lib/drivers";
 import type { RoadState, RoadStatus } from "@/lib/places";
 import type { DictKey } from "@/lib/dictionaries";
@@ -81,6 +82,7 @@ export function DriverCard({ driver }: { driver: Driver }) {
       <p>
         <span className="font-semibold tabular-nums">
           {formatKzt(p.min)} – {formatKzt(p.max)}
+          <Usd min={p.min} max={p.max} />
         </span>{" "}
         <span className="text-xs text-muted">{t("drivers.perDay")}</span>
       </p>

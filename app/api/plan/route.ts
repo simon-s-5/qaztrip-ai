@@ -5,7 +5,7 @@ import { driversForPrompt } from "@/lib/drivers";
 import { costsForPrompt } from "@/lib/costs";
 import { MAX_TRAVELLERS } from "@/lib/planValidation";
 import { AiAnswerZ, PLAN_JSON_SCHEMA } from "@/lib/planSchema";
-import { chooseConditions, FOOD_FORM, formToConditions, LOCKABLE, LODGING, TRANSPORT, type Conditions } from "@/lib/conditions";
+import { chooseConditions, defaultTransport, FOOD_FORM, formToConditions, LOCKABLE, LODGING, TRANSPORT, type Conditions } from "@/lib/conditions";
 import { budgetHelp, computePlan, fitUnlocked } from "@/lib/planResult";
 import { keepsWishPlaces } from "@/lib/wishes";
 import { isOverBudget } from "@/lib/budgetAdvice";
@@ -50,19 +50,21 @@ export async function POST(req: Request) {
 
   const input = body.data;
   const hasText = input.extra.trim().length > 0;
-  const formConditions = formToConditions(
-    { lodging: input.lodging, transport: input.transport, food: input.food },
-    input.explicit,
-  );
   // Picked places are wishes, except places whose road is closed now (never recommended).
   const mustSee = [...new Set(input.places)].filter((id) => !isRoadClosed(getPlace(id)));
+  // A nature place picked and transport not chosen by hand → private local driver by default.
+  const natureChosen = mustSee.some((id) => getPlace(id)?.categories.includes("nature"));
+  const formConditions = formToConditions(
+    { lodging: input.lodging, transport: defaultTransport(input.transport, input.explicit, natureChosen), food: input.food },
+    input.explicit,
+  );
   const month = new Date().toLocaleString("en", { month: "long", timeZone: "Asia/Almaty" });
 
   const system = `You are QazTrip AI, a careful travel planner for Almaty city and the Almaty region of Kazakhstan.
 STEP 1 — the traveller's situation ("conditions"):
 - Start from FORM CONDITIONS. Then apply the traveller's free text (EXTRA WISHES) on top: if the text contradicts the form, THE TEXT WINS.
 - Values: lodging = hotel | hostel | free (staying with relatives or at own home, 0 ₸) | apartment (rented flat);
-  transport = public | taxi | rental (rented car) | own (own car); each meal = buy | guest (eaten at relatives/hosts, 0 ₸) | self (cooked themselves).
+  transport = driver (private local driver from DRIVERS) | public | taxi | rental (rented car) | own (own car); each meal = buy | guest (eaten at relatives/hosts, 0 ₸) | self (cooked themselves).
 - Something that applies to all days goes into the base values; something for specific days only goes into "overrides"
   (e.g. "we rent a car on day 3" → {day: 3, field: "transport", value: "rental"}; "dinner at my aunt's on day 2" → {day: 2, field: "dinner", value: "guest"};
   "we always have dinner at relatives" → meals.dinner = "guest"). Lodging on day N means the night after day N.
@@ -82,8 +84,9 @@ STEP 2 — the plan (follow the conditions):
    Do NOT add lodging, car rental, fuel or groceries — the server adds them from the conditions.
    "qty" is counted for ONE traveller (e.g. one lunch = qty 1, two rides = qty 2). NEVER multiply by the group size: the server does that.
 6. A place visit that is a tour already includes its transport.
-   DRIVERS: for a trip to a nature place outside the city on a day whose transport is public or taxi, choose ONE driver from DRIVERS
+   DRIVERS: on a day whose transport is "driver", every trip to a nature place outside the city MUST use ONE driver from DRIVERS
    whose "routes" include that place (enough seats for the group if possible; prefer one who speaks the traveller's language).
+   On public or taxi days you may also choose such a driver for a nature trip. On a "driver" day without a nature trip, use taxi-city for rides.
    Put its id in "driverId" on the visit item and on the transfer items of that trip. With a driver, do NOT add the place's "tour" price
    or city rides for that trip — the server adds the driver's day price. On rental or own-car days, and when no driver fits, driverId = "none".
 7. ROADS: a place whose "road" is CLOSED must NOT be included. If it is LIMITED, you may include it but add a warning with the reason.

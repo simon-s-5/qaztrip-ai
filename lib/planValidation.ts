@@ -253,6 +253,7 @@ export function validatePlan(
       const mealMode = dc && mealSlot ? dc.meals[mealSlot] : "buy";
       let hasMealCost = false;
       let rideByCar = false;
+      let rideByDriver = false;
 
       for (const ref of refs.values()) {
         let c = costs.get(ref.id);
@@ -265,8 +266,13 @@ export function validatePlan(
               rideByCar = true; // travelling by car: counted in the day costs
               continue;
             }
+            if (dc.transport === "driver" && dayHasDriver) {
+              rideByDriver = true; // private driver that day: rides are in the driver's day price
+              continue;
+            }
             if (dc.transport === "public" && c.id === "taxi-city") c = costs.get("bus") ?? c;
-            if (dc.transport === "taxi" && c.id !== "taxi-city") c = costs.get("taxi-city") ?? c;
+            // "driver" without a covering driver that day (e.g. a city day): a taxi, never a bus.
+            if ((dc.transport === "taxi" || dc.transport === "driver") && c.id !== "taxi-city") c = costs.get("taxi-city") ?? c;
           }
           if (MEAL_COSTS.has(c.id) && mealMode !== "buy") continue; // replaced by a 0 ₸ line
           // Where bought meals are eaten: a wish ("only cafés") or the server's cheaper choice overrides the AI.
@@ -323,6 +329,9 @@ export function validatePlan(
 
       // A ride replaced by the day's car is not "unknown": its cost is in the day's car costs.
       if (itemCosts.length === 0 && (rideByCar || (carDay && it.isTransfer))) itemCosts.push(free("by-car"));
+      // Same on a private-driver day: a transfer or ride is covered by the driver paid once that day.
+      const driverDay = dc?.transport === "driver" && dayHasDriver;
+      if (itemCosts.length === 0 && driverDay && (rideByDriver || it.isTransfer)) itemCosts.push(free("by-driver"));
 
       v.unverifiedPrices += itemCosts.filter((c) => !c.verified).length;
       if (itemCosts.length === 0) {

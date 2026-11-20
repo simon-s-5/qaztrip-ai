@@ -8,12 +8,14 @@
  * the server only shows what they cost (lib/wishes.ts). Everything else may be made cheaper.
  */
 
-export const LODGING = ["hotel", "hostel", "free", "apartment"] as const;
-export const TRANSPORT = ["public", "taxi", "rental", "own"] as const;
-export const MEAL_MODES = ["buy", "guest", "self"] as const;
+// Options are shown in this order: "free" (relatives / own home) and "partly" (some meals as guests) last.
+export const LODGING = ["hotel", "hostel", "apartment", "free"] as const;
+/** "driver": a private local driver from data/drivers.json (first: the default for nature trips). */
+export const TRANSPORT = ["driver", "public", "taxi", "rental", "own"] as const;
+export const MEAL_MODES = ["buy", "self", "guest"] as const;
 export const MEALS = ["breakfast", "lunch", "dinner"] as const;
 export const MEAL_PLACES = ["auto", "cafe", "canteen"] as const;
-export const FOOD_FORM = ["buy", "partly", "self"] as const;
+export const FOOD_FORM = ["buy", "self", "partly"] as const;
 export const OVERRIDE_FIELDS = ["lodging", "transport", ...MEALS] as const;
 /** Base fields that can be an explicit wish (and otherwise be made cheaper by the server). */
 export const LOCKABLE = ["lodging", "transport", "mealPlace"] as const;
@@ -65,6 +67,15 @@ const FOOD_TO_MEALS: Record<FoodForm, Meals> = {
   partly: { breakfast: "buy", lunch: "buy", dinner: "guest" },
   self: { breakfast: "self", lunch: "self", dinner: "self" },
 };
+
+/**
+ * Default "Getting around": a private local driver when the traveller picked a nature place
+ * and did not choose the transport themselves. A transport the traveller chose always wins.
+ */
+export function defaultTransport(current: Transport, explicit: readonly Lockable[], natureChosen: boolean): Transport {
+  if (explicit.includes("transport")) return current;
+  return natureChosen ? "driver" : current;
+}
 
 /** `explicit`: form fields the user actually changed (untouched defaults are not wishes). */
 export function formToConditions(f: FormConditions, explicit: Lockable[] = []): Conditions {

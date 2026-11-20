@@ -7,6 +7,7 @@ import { Icon } from "@/components/Icon";
 import { getPlace } from "@/lib/places";
 import { driversForPlace } from "@/lib/drivers";
 import { DriverList, RoadInfo } from "@/components/Drivers";
+import { Usd } from "@/components/Usd";
 
 export function PlaceDetail({ id }: { id: string }) {
   const { t, placeText, placesTranslated, formatKzt } = usePlacesI18n();
@@ -84,6 +85,7 @@ export function PlaceDetail({ id }: { id: string }) {
                 <span className="flex items-center gap-2">
                   <span className="font-semibold tabular-nums">
                     {p.max === 0 ? t("common.free") : `${formatKzt(p.min)} – ${formatKzt(p.max)}`}
+                    <Usd min={p.min} max={p.max} />
                   </span>
                   {!p.verified && <UnverifiedTag />}
                 </span>

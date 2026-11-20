@@ -59,6 +59,8 @@ export function cheapenUnlocked(c: Conditions, evaluate: Evaluate): { conditions
     if (cur.locked.includes(field)) continue;
     if (field === "lodging" && cur.lodging === "free") continue;
     if (field === "transport" && cur.transport === "own") continue;
+    // A private local driver is the main nature-trip scenario: never swapped for a self-drive rental behind the traveller's back.
+    if (field === "transport" && cur.transport === "driver") continue;
     const before = evaluate(cur);
     const best = cheapestAlternative(cur, field, evaluate);
     if (best.value !== cur[field] && best.cost < before) {

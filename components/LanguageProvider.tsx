@@ -5,6 +5,7 @@ import { BUILTIN, en, type Dict, type DictKey } from "@/lib/dictionaries";
 import { DEFAULT_LANGUAGE, type Language } from "@/lib/languages";
 import { PLACES, placeText, type PlaceText } from "@/lib/places";
 import { COSTS } from "@/lib/costs";
+import { usdAmount } from "@/lib/currency";
 import { hash, postJson, storageGet, storageSet } from "@/lib/client";
 
 const UI_VERSION = hash(JSON.stringify(en));
@@ -25,6 +26,10 @@ type Ctx = {
   setLanguage: (l: Language) => void;
   t: (key: DictKey, vars?: Record<string, string | number>) => string;
   formatKzt: (n: number) => string;
+  /** Approximate USD next to a ₸ amount or range, e.g. "≈ $40–70 approx."; "" when free. */
+  formatUsd: (min: number, max?: number) => string;
+  /** "20 000 ₸ (≈ $40 approx.)" — for amounts inside sentences. */
+  money: (n: number) => string;
   placeText: (id: string) => PlaceText;
   /** Label of a general cost (transport, meal, accommodation), translated if available. */
   costLabel: (id: string) => string;
@@ -141,6 +146,16 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         return new Intl.NumberFormat("en", { maximumFractionDigits: 0 });
       }
     })();
+    const fill = (key: DictKey, vars?: Record<string, string | number>) => {
+      let s = ui.strings[key] ?? en[key] ?? key;
+      if (vars) for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v));
+      return s;
+    };
+    const kzt = (n: number) => `${nf.format(n)} ₸`;
+    const usd = (min: number, max?: number) => {
+      const a = usdAmount(min, max);
+      return a ? fill("currency.usd", { amount: a }) : "";
+    };
     return {
       language,
       dir: ui.dir,
@@ -148,12 +163,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       status,
       aiTranslated,
       setLanguage,
-      t: (key, vars) => {
-        let s = ui.strings[key] ?? en[key] ?? key;
-        if (vars) for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v));
-        return s;
-      },
-      formatKzt: (n) => `${nf.format(n)} ₸`,
+      t: fill,
+      formatKzt: kzt,
+      formatUsd: usd,
+      money: (n) => (usd(n) ? `${kzt(n)} (${usd(n)})` : kzt(n)),
       placeText: (id) => places?.places[id] ?? ORIGINAL_PLACES[id],
       costLabel: (id) => places?.costs?.[id] ?? ORIGINAL_COSTS[id] ?? id,
       placesTranslated: Boolean(places) && language.code !== "en",
