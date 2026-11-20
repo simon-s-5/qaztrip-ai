@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+/* Design tokens — "steppe & mountains": deep teal brand, warm apricot accent. */
+:root {
+  --bg: #f6f5f1;
+  --surface: #ffffff;
+  --surface-2: #efede6;
+  --ink: #18211f;
+  --muted: #5f6b67;
+  --line: #e2dfd5;
+  --brand: #0f6b63;
+  --brand-ink: #ffffff;
+  --brand-soft: #dcefeb;
+  --accent: #c96a1b;
+  --accent-soft: #fbead9;
+  --warn-soft: #fff4d6;
+  --warn-ink: #7a5300;
+  --danger-soft: #fde4e1;
+  --danger-ink: #9b2c20;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1413;
+    --surface: #141d1c;
+    --surface-2: #1b2625;
+    --ink: #e8efed;
+    --muted: #9aa8a4;
+    --line: #26332f;
+    --brand: #3fb5a8;
+    --brand-ink: #062320;
+    --brand-soft: #143532;
+    --accent: #f0a25c;
+    --accent-soft: #3a2614;
+    --warn-soft: #3a2f10;
+    --warn-ink: #f3d27a;
+    --danger-soft: #3d1a16;
+    --danger-ink: #f4a79c;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-ink: var(--warn-ink);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-ink: var(--danger-ink);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, "Noto Sans", "PingFang SC", "Microsoft YaHei",
+    "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans Arabic", sans-serif;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+@layer components {
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+}
+
+.input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  font-size: 1rem; /* 16px avoids iOS zoom on focus */
+  color: var(--ink);
+  outline: none;
+}
+.input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 20%, transparent);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-weight: 600;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.1rem;
+  transition: opacity 0.15s;
+}
+.btn-primary:disabled {
+  opacity: 0.55;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.875rem;
+}
+.chip[aria-pressed="true"] {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-ink);
+}
+
+.pb-nav {
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+}
+}

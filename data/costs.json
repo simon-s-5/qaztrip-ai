@@ -1,0 +1,86 @@
+[
+  {
+    "id": "metro",
+    "category": "transport",
+    "label": "Metro ride in Almaty (one trip, per person)",
+    "unit": "person",
+    "capacity": 1,
+    "min": 120,
+    "max": 250,
+    "currency": "KZT",
+    "verified": false,
+    "source": "Initial estimate (AI-assisted draft) — to be verified by the team"
+  },
+  {
+    "id": "bus",
+    "category": "transport",
+    "label": "City bus ride in Almaty (one trip, per person)",
+    "unit": "person",
+    "capacity": 1,
+    "min": 120,
+    "max": 250,
+    "currency": "KZT",
+    "verified": false,
+    "source": "Initial estimate (AI-assisted draft) — to be verified by the team"
+  },
+  {
+    "id": "taxi-city",
+    "category": "transport",
+    "label": "Taxi ride within Almaty (per car, up to 4 people)",
+    "unit": "vehicle",
+    "capacity": 4,
+    "min": 1500,
+    "max": 4000,
+    "currency": "KZT",
+    "verified": false,
+    "source": "Initial estimate (AI-assisted draft) — to be verified by the team"
+  },
+  {
+    "id": "meal-canteen",
+    "category": "food",
+    "label": "Meal at a budget canteen (per person)",
+    "unit": "person",
+    "capacity": 1,
+    "min": 2000,
+    "max": 3500,
+    "currency": "KZT",
+    "verified": false,
+    "source": "Initial estimate (AI-assisted draft) — to be verified by the team"
+  },
+  {
+    "id": "meal-cafe",
+    "category": "food",
+    "label": "Meal at a mid-range café (per person)",
+    "unit": "person",
+    "capacity": 1,
+    "min": 4000,
+    "max": 8000,
+    "currency": "KZT",
+    "verified": false,
+    "source": "Initial estimate (AI-assisted draft) — to be verified by the team"
+  },
+  {
+    "id": "hostel",
+    "category": "accommodation",
+    "label": "Hostel bed, one night (per person)",
+    "unit": "person",
+    "capacity": 1,
+    "min": 5000,
+    "max": 10000,
+    "currency": "KZT",
+    "verified": false,
+    "source": "Initial estimate (AI-assisted draft) — to be verified by the team"
+  },
+  {
+    "id": "hotel-mid",
+    "category": "accommodation",
+    "label": "Mid-range hotel room, one night (up to 2 people)",
+    "unit": "room",
+    "capacity": 2,
+    "min": 25000,
+    "max": 45000,
+    "currency": "KZT",
+    "verified": false,
+    "source": "Initial estimate (AI-assisted draft) — to be verified by the team"
+  }
+]

@@ -1,0 +1,325 @@
+[
+  {
+    "id": "charyn",
+    "name": "Charyn Canyon",
+    "nameKk": "Шарын шатқалы",
+    "categories": ["nature", "hiking", "photo"],
+    "distanceFromAlmatyKm": 200,
+    "region": "Charyn National Park, Almaty Region",
+    "description": "A dramatic red-rock canyon about 150 m deep. The most famous part, the Valley of Castles, is a 3 km walk between eroded sandstone towers down to the Charyn River. Often compared to a small Grand Canyon.",
+    "howToGet": "About 3–3.5 hours by car east of Almaty. No regular public bus goes to the viewpoint: take a group day tour, hire a car with a driver or rent a car.",
+    "season": "April–June and September–October are best. Summer is very hot in the canyon; winter is possible but cold and windy.",
+    "durationHint": "Full day from Almaty (often combined with Kolsai and Kaindy on a 2-day trip)",
+    "coordinates": { "lat": 43.353, "lng": 79.077 },
+    "prices": [
+      { "id": "entry", "label": "National park entry (per adult)", "min": 1000, "max": 2000, "currency": "KZT", "verified": false },
+      { "id": "tour", "label": "Group day tour from Almaty (per person)", "min": 12000, "max": 25000, "currency": "KZT", "verified": false }
+    ],
+    "sourceName": "Wikipedia",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Charyn_Canyon"
+  },
+  {
+    "id": "kolsai",
+    "name": "Kolsai Lakes",
+    "nameKk": "Көлсай көлдері",
+    "categories": ["nature", "hiking", "photo", "family"],
+    "distanceFromAlmatyKm": 300,
+    "region": "Kolsay Lakes National Park, Raiymbek District",
+    "description": "A chain of three alpine lakes surrounded by spruce forest in the Northern Tien Shan. The lower lake is easy to reach; a trail of about 8 km leads to the middle lake. Guesthouses are available in Saty village.",
+    "howToGet": "About 5–6 hours by car from Almaty via Saty village. Usually visited on a 2–3 day tour together with Kaindy Lake and Charyn Canyon.",
+    "season": "June–September is best. Mountain roads and trails can be closed or icy from November to April.",
+    "durationHint": "2–3 days from Almaty (overnight in Saty)",
+    "coordinates": { "lat": 42.933, "lng": 78.324 },
+    "prices": [
+      { "id": "entry", "label": "National park entry (per adult)", "min": 1000, "max": 2000, "currency": "KZT", "verified": false },
+      { "id": "tour", "label": "2-day group tour from Almaty (Kolsai + Kaindy + Charyn)", "min": 25000, "max": 50000, "currency": "KZT", "verified": false }
+    ],
+    "sourceName": "Wikipedia",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Kolsay_Lakes_National_Park"
+  },
+  {
+    "id": "kaindy",
+    "name": "Kaindy Lake",
+    "nameKk": "Қайыңды көлі",
+    "categories": ["nature", "hiking", "photo"],
+    "distanceFromAlmatyKm": 290,
+    "region": "Kolsay Lakes National Park, near Saty village",
+    "description": "A lake formed by a 1911 earthquake landslide. Trunks of drowned spruce trees still rise out of the turquoise water, creating a famous 'sunken forest'.",
+    "howToGet": "From Saty village the last 12 km are a rough dirt road: locals offer 4x4 transfers or you can hike/ride a horse. Usually combined with Kolsai Lakes.",
+    "season": "June–September. In winter the lake freezes and access is difficult.",
+    "durationHint": "Half day from Saty",
+    "coordinates": { "lat": 42.985, "lng": 78.466 },
+    "prices": [
+      { "id": "entry", "label": "National park entry (per adult)", "min": 1000, "max": 2000, "currency": "KZT", "verified": false },
+      { "id": "transfer", "label": "Local 4x4 transfer from Saty (per person)", "min": 3000, "max": 7000, "currency": "KZT", "verified": false }
+    ],
+    "sourceName": "Wikipedia",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Lake_Kaindy"
+  },
+  {
+    "id": "medeu",
+    "name": "Medeu",
+    "nameKk": "Медеу",
+    "categories": ["winter", "city", "family", "photo"],
+    "distanceFromAlmatyKm": 15,
+    "region": "Medeu valley, Almaty",
+    "description": "A legendary high-altitude outdoor skating rink at 1,691 m in a mountain valley above Almaty. Nearby is the Medeu dam with a long staircase and great views.",
+    "howToGet": "City bus No. 12 from Dostyk Avenue (about 30–40 min) or a taxi (about 20–30 min) from the city centre.",
+    "season": "Skating: roughly November–March. In summer the valley is popular for walks and events.",
+    "durationHint": "2–4 hours (easy to combine with Shymbulak)",
+    "coordinates": { "lat": 43.1575, "lng": 77.0587 },
+    "prices": [
+      { "id": "skating", "label": "Skating session ticket (adult)", "min": 2500, "max": 4000, "currency": "KZT", "verified": false }
+    ],
+    "sourceName": "Wikipedia",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Medeu"
+  },
+  {
+    "id": "shymbulak",
+    "name": "Shymbulak",
+    "nameKk": "Шымбұлақ",
+    "categories": ["winter", "nature", "hiking", "photo", "family"],
+    "distanceFromAlmatyKm": 25,
+    "region": "Ile-Alatau mountains above Medeu, Almaty",
+    "description": "The largest ski resort in Central Asia, reached by a gondola from Medeu. Cable cars continue up to Talgar Pass (about 3,200 m) with views of glaciers and peaks. In summer it is a hiking and viewpoint destination.",
+    "howToGet": "Go to Medeu (bus No. 12 or taxi), then take the gondola up to Shymbulak and further chairlifts to Talgar Pass.",
+    "season": "Skiing: about December–April. Summer (June–September) for views and hiking.",
+    "durationHint": "Half day to full day",
+    "coordinates": { "lat": 43.1283, "lng": 77.0808 },
+    "prices": [
+      { "id": "gondola", "label": "Gondola Medeu – Shymbulak – Talgar Pass, return (adult)", "min": 8000, "max": 15000, "currency": "KZT", "verified": false },
+      { "id": "skipass", "label": "Ski pass, one day (adult)", "min": 15000, "max": 30000, "currency": "KZT", "verified": false }
+    ],
+    "sourceName": "Wikipedia",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Shymbulak"
+  },
+  {
+    "id": "big-almaty-lake",
+    "name": "Big Almaty Lake",
+    "nameKk": "Үлкен Алматы көлі",
+    "categories": ["nature", "photo", "hiking"],
+    "distanceFromAlmatyKm": 28,
+    "region": "Ile-Alatau National Park, south of Almaty",
+    "description": "A turquoise mountain lake at about 2,500 m, surrounded by high peaks. It is a protected water reservoir for the city, so swimming is not allowed.",
+    "howToGet": "About 1–1.5 hours by taxi or car via the Big Almaty Gorge road. The last part of the road may be closed to private cars; check the current rules before you go.",
+    "season": "June–October is best; the water colour is most vivid in summer. Road access can be limited in winter and spring.",
+    "durationHint": "Half day",
+    "coordinates": { "lat": 43.0505, "lng": 76.985 },
+    "prices": [
+      { "id": "entry", "label": "National park entry (per adult)", "min": 1000, "max": 1500, "currency": "KZT", "verified": false }
+    ],
+    "sourceName": "Wikipedia",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Big_Almaty_Lake"
+  },
+  {
+    "id": "kok-tobe",
+    "name": "Kok-Tobe Hill",
+    "nameKk": "Көктөбе",
+    "categories": ["city", "family", "photo"],
+    "distanceFromAlmatyKm": 0,
+    "region": "Almaty city",
+    "description": "A hill on the edge of the city centre with panoramic views of Almaty and the mountains, the TV tower, a small amusement park, cafés and the famous Beatles monument. Especially beautiful at sunset.",
+    "howToGet": "Cable car from the lower station near the Palace of the Republic (Dostyk Ave / Abai Ave), or by taxi/shuttle to the top.",
+    "season": "All year. Evenings are popular.",
+    "durationHint": "2–3 hours",
+    "coordinates": { "lat": 43.2337, "lng": 76.9764 },
+    "prices": [
+      { "id": "cablecar", "label": "Cable car, return (adult)", "min": 2500, "max": 4000, "currency": "KZT", "verified": false }
+    ],
+    "sourceName": "Wikipedia",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Kok_Tobe"
+  },
+  {
+    "id": "panfilov-park",
+    "name": "Panfilov Park and Ascension Cathedral",
+    "nameKk": "28 панфиловшылар саябағы және Вознесенский соборы",
+    "categories": ["city", "history", "culture", "family", "photo"],
+    "distanceFromAlmatyKm": 0,
+    "region": "Almaty city centre",
+    "description": "A large green park in the centre of Almaty with the colourful wooden Ascension Cathedral (built 1907 without nails, survived the 1911 earthquake), a war memorial and an eternal flame.",
+    "howToGet": "Walk from the city centre or take the metro to Zhibek Zholy station (about 10 minutes walk).",
+    "season": "All year.",
+    "durationHint": "1–2 hours",
+    "coordinates": { "lat": 43.259, "lng": 76.953 },
+    "prices": [
+      { "id": "entry", "label": "Park and cathedral entry", "min": 0, "max": 0, "currency": "KZT", "verified": false }
+    ],
+    "sourceName": "Wikipedia",
+    "sourceUrl": "https://en.wikipedia.org/wiki/28_Panfilov_Guardsmen_Park"
+  },
+  {
+    "id": "green-bazaar",
+    "name": "Green Bazaar",
+    "nameKk": "Көк базар",
+    "categories": ["food", "city", "culture"],
+    "distanceFromAlmatyKm": 0,
+    "region": "Almaty city centre",
+    "description": "Almaty's most famous market. Try dried fruits, nuts, honey, kurt, horse-meat delicacies, Korean salads and local sweets. A great place to feel everyday local life.",
+    "howToGet": "A short walk from Panfilov Park, or metro to Zhibek Zholy station.",
+    "season": "All year; it is usually closed on Mondays (check before visiting).",
+    "durationHint": "1–2 hours",
+    "coordinates": { "lat": 43.2655, "lng": 76.952 },
+    "prices": [
+      { "id": "entry", "label": "Market entry", "min": 0, "max": 0, "currency": "KZT", "verified": false }
+    ],
+    "sourceName": "Wikipedia",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Green_Bazaar"
+  },
+  {
+    "id": "central-museum",
+    "name": "Central State Museum of Kazakhstan",
+    "nameKk": "Қазақстан Республикасының Орталық мемлекеттік музейі",
+    "categories": ["culture", "history", "city", "family"],
+    "distanceFromAlmatyKm": 0,
+    "region": "Almaty city",
+    "description": "One of the largest museums in Central Asia, covering Kazakh history from ancient times, nomadic culture, ethnography and modern history.",
+    "howToGet": "Located near Republic Square on Samal-1 district; reachable by bus or taxi from the centre.",
+    "season": "All year; usually closed on one weekday (check opening hours).",
+    "durationHint": "2–3 hours",
+    "coordinates": { "lat": 43.2363, "lng": 76.9506 },
+    "prices": [
+      { "id": "ticket", "label": "Entry ticket (adult)", "min": 500, "max": 1500, "currency": "KZT", "verified": false }
+    ],
+    "sourceName": "Wikipedia",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Central_State_Museum_of_Kazakhstan"
+  },
+  {
+    "id": "altyn-emel",
+    "name": "Altyn-Emel National Park (Singing Dune)",
+    "nameKk": "Алтынемел ұлттық паркі (Әнші құм)",
+    "categories": ["nature", "photo", "hiking", "history"],
+    "distanceFromAlmatyKm": 250,
+    "region": "Altyn-Emel National Park, Almaty Region",
+    "description": "A vast desert park with the Singing Dune that hums in dry windy weather, the colourful Aktau 'chalk' mountains, Besshatyr burial mounds and wild kulans and gazelles.",
+    "howToGet": "About 4 hours by car from Almaty. A permit from the park office in Basshi village is required; most visitors go with a tour or a 4x4 with a driver.",
+    "season": "April–June and September–October. Summer is extremely hot.",
+    "durationHint": "1–2 days",
+    "coordinates": { "lat": 43.862, "lng": 78.565 },
+    "prices": [
+      { "id": "entry", "label": "Park permit (per adult)", "min": 1500, "max": 3000, "currency": "KZT", "verified": false },
+      { "id": "tour", "label": "Group tour from Almaty (per person)", "min": 25000, "max": 50000, "currency": "KZT", "verified": false }
+    ],
+    "sourceName": "Wikipedia",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Altyn-Emel_National_Park"
+  },
+  {
+    "id": "tamgaly",
+    "name": "Tamgaly Petroglyphs",
+    "nameKk": "Таңбалы петроглифтері",
+    "categories": ["history", "culture", "photo"],
+    "distanceFromAlmatyKm": 170,
+    "region": "Zhambyl District, Almaty Region",
+    "description": "A UNESCO World Heritage site with about 5,000 Bronze Age rock carvings, including the famous sun-headed deities, in a quiet gorge of the Chu-Ili mountains.",
+    "howToGet": "About 2.5–3 hours by car north-west of Almaty. No public transport; go by car, taxi or tour.",
+    "season": "April–October. Avoid midday heat in summer.",
+    "durationHint": "Full day from Almaty",
+    "coordinates": { "lat": 43.803, "lng": 75.533 },
+    "prices": [
+      { "id": "entry", "label": "Site entry (adult)", "min": 500, "max": 1500, "currency": "KZT", "verified": false }
+    ],
+    "sourceName": "Wikipedia",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Tamgaly"
+  },
+  {
+    "id": "turgen",
+    "name": "Turgen Gorge and Waterfalls",
+    "nameKk": "Түрген шатқалы және сарқырамалары",
+    "categories": ["nature", "hiking", "family", "photo"],
+    "distanceFromAlmatyKm": 70,
+    "region": "Ile-Alatau National Park, Enbekshikazakh District",
+    "description": "A green mountain gorge with several waterfalls (Bear, Kairak, Bozzhyra), a trout farm and horse riding. The road continues up to the Assy Plateau.",
+    "howToGet": "About 1.5 hours by car east of Almaty via Turgen village. Taxi or tour recommended.",
+    "season": "May–October is best. Waterfalls freeze in winter (ice climbing).",
+    "durationHint": "Full day",
+    "coordinates": { "lat": 43.358, "lng": 77.644 },
+    "prices": [
+      { "id": "entry", "label": "National park entry (per adult)", "min": 1000, "max": 2000, "currency": "KZT", "verified": false }
+    ],
+    "sourceName": "Wikipedia (Ile-Alatau National Park)",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Ile-Alatau_National_Park"
+  },
+  {
+    "id": "assy-plateau",
+    "name": "Assy Plateau",
+    "nameKk": "Асы жайлауы",
+    "categories": ["nature", "photo", "hiking"],
+    "distanceFromAlmatyKm": 110,
+    "region": "Above Turgen Gorge, Ile-Alatau mountains",
+    "description": "A wide high-mountain pasture at about 2,500 m where nomadic herders still keep yurts and horses in summer. Home to the Assy-Turgen astronomical observatory.",
+    "howToGet": "Through Turgen Gorge on a rough mountain road; a 4x4 or a tour is strongly recommended.",
+    "season": "June–September.",
+    "durationHint": "Full day",
+    "coordinates": { "lat": 43.04, "lng": 77.94 },
+    "prices": [],
+    "sourceName": "Wikipedia (Ile-Alatau National Park)",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Ile-Alatau_National_Park"
+  },
+  {
+    "id": "issyk",
+    "name": "Issyk Lake and Issyk Kurgan Museum",
+    "nameKk": "Есік көлі және Есік қорғаны",
+    "categories": ["history", "nature", "culture"],
+    "distanceFromAlmatyKm": 60,
+    "region": "Esik town, Enbekshikazakh District",
+    "description": "The Issyk Kurgan is where the 'Golden Man' — a Saka warrior in golden armour, a national symbol of Kazakhstan — was found. The open-air museum is in Esik town; the mountain lake Issyk is about 15 km higher up the gorge.",
+    "howToGet": "About 1–1.5 hours by car or suburban bus from Almaty to Esik, then taxi to the lake.",
+    "season": "Museum all year; the lake is best May–October.",
+    "durationHint": "Half day to full day",
+    "coordinates": { "lat": 43.255, "lng": 77.484 },
+    "prices": [
+      { "id": "museum", "label": "Issyk Kurgan museum ticket (adult)", "min": 500, "max": 1500, "currency": "KZT", "verified": false }
+    ],
+    "sourceName": "Wikipedia",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Issyk_kurgan"
+  },
+  {
+    "id": "butakovka",
+    "name": "Butakovka Gorge and Waterfall",
+    "nameKk": "Бутаковка шатқалы және сарқырамасы",
+    "categories": ["nature", "hiking", "family"],
+    "distanceFromAlmatyKm": 15,
+    "region": "Ile-Alatau National Park, near Almaty",
+    "description": "A popular easy hiking gorge close to the city with a forest trail to a small waterfall. Good for a first acclimatisation walk.",
+    "howToGet": "About 30 minutes by taxi from the centre to the start of the trail in Butakovka village.",
+    "season": "May–October.",
+    "durationHint": "Half day",
+    "coordinates": { "lat": 43.195, "lng": 77.03 },
+    "prices": [],
+    "sourceName": "Wikipedia (Ile-Alatau National Park)",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Ile-Alatau_National_Park"
+  },
+  {
+    "id": "kapchagay",
+    "name": "Kapshagay Reservoir (Qonaev)",
+    "nameKk": "Қапшағай су қоймасы (Қонаев)",
+    "categories": ["relax", "family", "nature"],
+    "distanceFromAlmatyKm": 75,
+    "region": "Qonaev city, Almaty Region",
+    "description": "A large reservoir on the Ili River known as the 'beach of Almaty': sandy beaches, resorts, water sports and summer cottages.",
+    "howToGet": "About 1–1.5 hours by car or intercity bus/minibus from Almaty to Qonaev.",
+    "season": "June–August for swimming.",
+    "durationHint": "Full day",
+    "coordinates": { "lat": 43.88, "lng": 77.1 },
+    "prices": [],
+    "sourceName": "Wikipedia",
+    "sourceUrl": "https://en.wikipedia.org/wiki/Kapchagay_Reservoir"
+  },
+  {
+    "id": "first-president-park",
+    "name": "First President's Park",
+    "nameKk": "Тұңғыш Президент саябағы",
+    "categories": ["city", "relax", "family", "photo"],
+    "distanceFromAlmatyKm": 0,
+    "region": "Southern Almaty",
+    "description": "A large landscaped park with fountains, lawns and alleys, with the mountains as a backdrop. Popular for evening walks and photos.",
+    "howToGet": "By taxi or bus to Al-Farabi Avenue / Navoi Street.",
+    "season": "All year; best from April to October.",
+    "durationHint": "1–2 hours",
+    "coordinates": { "lat": 43.197, "lng": 76.889 },
+    "prices": [
+      { "id": "entry", "label": "Park entry", "min": 0, "max": 0, "currency": "KZT", "verified": false }
+    ],
+    "sourceName": "Wikipedia",
+    "sourceUrl": "https://en.wikipedia.org/wiki/First_President's_Park"
+  }
+]
