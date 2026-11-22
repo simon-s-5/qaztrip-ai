@@ -70,9 +70,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         )}
         {status === "error" && (
-          <div role="status" className="bg-danger-soft px-4 py-1.5 text-center text-xs text-danger-ink">
-            {t("errors.translate")}{" "}
-            <button type="button" className="font-semibold underline" onClick={() => setLanguage(language)}>
+          <div role="status" className="bg-accent-soft px-4 py-1 text-center text-[11px] text-accent">
+            {t("errors.translate")} ·{" "}
+            <button type="button" className="underline" onClick={() => setLanguage(language)}>
               {t("common.retry")}
             </button>
           </div>

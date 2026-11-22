@@ -10,20 +10,24 @@ export type Language = {
   dir?: "ltr" | "rtl";
 };
 
+/**
+ * Order: languages that load instantly first — English, the ten pre-translated popular languages
+ * (public/locales, see lib/translation.ts PRETRANSLATED), Russian and Kazakh (built in) — then languages translated live by AI.
+ */
 export const LANGUAGES: Language[] = [
   { code: "en", name: "English", native: "English", locale: "en" },
-  { code: "kk", name: "Kazakh", native: "Қазақша", locale: "kk" },
-  { code: "ru", name: "Russian", native: "Русский", locale: "ru" },
   { code: "zh", name: "Chinese (Simplified)", native: "中文", locale: "zh-CN" },
-  { code: "tr", name: "Turkish", native: "Türkçe", locale: "tr" },
   { code: "ko", name: "Korean", native: "한국어", locale: "ko" },
+  { code: "ja", name: "Japanese", native: "日本語", locale: "ja" },
+  { code: "tr", name: "Turkish", native: "Türkçe", locale: "tr" },
   { code: "ar", name: "Arabic", native: "العربية", locale: "ar", dir: "rtl" },
+  { code: "hi", name: "Hindi", native: "हिन्दी", locale: "hi" },
   { code: "uz", name: "Uzbek", native: "Oʻzbekcha", locale: "uz" },
   { code: "de", name: "German", native: "Deutsch", locale: "de" },
   { code: "fr", name: "French", native: "Français", locale: "fr" },
   { code: "es", name: "Spanish", native: "Español", locale: "es" },
-  { code: "ja", name: "Japanese", native: "日本語", locale: "ja" },
-  { code: "hi", name: "Hindi", native: "हिन्दी", locale: "hi" },
+  { code: "ru", name: "Russian", native: "Русский", locale: "ru" },
+  { code: "kk", name: "Kazakh", native: "Қазақша", locale: "kk" },
   { code: "ky", name: "Kyrgyz", native: "Кыргызча", locale: "ky" },
   { code: "fa", name: "Persian", native: "فارسی", locale: "fa", dir: "rtl" },
 ];

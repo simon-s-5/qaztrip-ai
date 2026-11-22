@@ -3,17 +3,18 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { BUILTIN, en, type Dict, type DictKey } from "@/lib/dictionaries";
 import { DEFAULT_LANGUAGE, type Language } from "@/lib/languages";
-import { PLACES, placeText, type PlaceText } from "@/lib/places";
-import { COSTS } from "@/lib/costs";
+import type { PlaceText } from "@/lib/places";
 import { usdAmount } from "@/lib/currency";
-import { hash, postJson, storageGet, storageSet } from "@/lib/client";
+import { storageGet, storageSet } from "@/lib/client";
+import { hasPretranslatedPlaces, isPretranslated, unflattenPlaces } from "@/lib/translation";
+import { ORIGINAL_COSTS, ORIGINAL_PLACES } from "@/lib/translationSources";
+import { loadPretranslated, translateWithAi, type Translated } from "@/lib/translationClient";
 
-const UI_VERSION = hash(JSON.stringify(en));
-const PLACES_VERSION = hash(JSON.stringify([PLACES.map(placeText), COSTS.map((c) => c.label)]));
 const LANG_KEY = "qaztrip:lang";
 
 type UiPayload = { strings: Dict; dir: "ltr" | "rtl"; locale: string };
 type PlacesPayload = { places: Record<string, PlaceText>; costs?: Record<string, string> };
+/** "error": the translation could not be completed — the site stays in English with a small notice. */
 type Status = "idle" | "translating" | "error";
 
 type Ctx = {
@@ -21,7 +22,7 @@ type Ctx = {
   dir: "ltr" | "rtl";
   locale: string;
   status: Status;
-  /** True when the current UI strings come from AI translation. */
+  /** True when the current UI strings come from live AI translation (not pre-translated). */
   aiTranslated: boolean;
   setLanguage: (l: Language) => void;
   t: (key: DictKey, vars?: Record<string, string | number>) => string;
@@ -39,11 +40,17 @@ type Ctx = {
 
 const LanguageContext = createContext<Ctx | null>(null);
 
-const ORIGINAL_PLACES: Record<string, PlaceText> = Object.fromEntries(PLACES.map((p) => [p.id, placeText(p)]));
-const ORIGINAL_COSTS: Record<string, string> = Object.fromEntries(COSTS.map((c) => [c.id, c.label]));
-
 function cacheKey(kind: string, l: Language) {
-  return `qaztrip:${kind}:${l.name.toLowerCase()}`;
+  return `qaztrip:${kind}:v2:${l.name.toLowerCase()}`;
+}
+
+function validLocale(tag: string | undefined, fallback: string) {
+  try {
+    if (tag) new Intl.NumberFormat(tag);
+    return tag || fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
@@ -63,27 +70,22 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       setStatus("idle");
       return;
     }
-    const cached = storageGet<UiPayload & { v: string }>(cacheKey("ui", l));
-    if (cached?.v === UI_VERSION) {
-      setUi({ strings: { ...en, ...cached.strings }, dir: cached.dir, locale: l.locale || cached.locale });
-      setAiTranslated(true);
-      setStatus("idle");
-      return;
-    }
     setStatus("translating");
-    try {
-      const data = await postJson<UiPayload>("/api/translate", { language: l.name, kind: "ui" });
-      if (id !== reqId.current) return;
-      storageSet(cacheKey("ui", l), { ...data, v: UI_VERSION });
-      setUi({ strings: data.strings, dir: l.dir ?? data.dir, locale: l.locale || data.locale });
-      setAiTranslated(true);
-      setStatus("idle");
-    } catch {
-      if (id !== reqId.current) return;
+    // Popular languages: the pre-translated file (no AI). Others, or if the file cannot be loaded: AI in parts.
+    let data: Translated | null = isPretranslated(l.code) ? await loadPretranslated(l.code, "ui") : null;
+    const fromAi = !data;
+    if (!data) data = await translateWithAi("ui", l.name, cacheKey("ui", l));
+    if (id !== reqId.current) return;
+    if (!data) {
+      // Never an error screen: keep English and show a small notice.
       setUi({ strings: en, dir: "ltr", locale: "en" });
       setAiTranslated(false);
       setStatus("error");
+      return;
     }
+    setUi({ strings: data.strings as Dict, dir: l.dir ?? data.dir, locale: validLocale(l.locale || data.locale, "en") });
+    setAiTranslated(fromAi);
+    setStatus("idle");
   }, []);
 
   const placesReq = useRef(0);
@@ -91,18 +93,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     const id = ++placesReq.current;
     setPlaces(null);
     if (l.code === "en") return;
-    const cached = storageGet<PlacesPayload & { v: string }>(cacheKey("places", l));
-    if (cached?.v === PLACES_VERSION) {
-      setPlaces(cached);
-      return;
-    }
-    try {
-      const data = await postJson<PlacesPayload>("/api/translate", { language: l.name, kind: "places" });
-      storageSet(cacheKey("places", l), { ...data, v: PLACES_VERSION });
-      if (id === placesReq.current) setPlaces(data);
-    } catch {
-      /* fall back to English descriptions */
-    }
+    let data = hasPretranslatedPlaces(l.code) ? await loadPretranslated(l.code, "places") : null;
+    if (!data) data = await translateWithAi("places", l.name, cacheKey("places", l));
+    if (!data || id !== placesReq.current) return; // not available: English descriptions stay
+    setPlaces(unflattenPlaces(ORIGINAL_PLACES, ORIGINAL_COSTS, data.strings));
   }, []);
 
   // Restore the language the visitor picked before; otherwise English (the default for foreign tourists).

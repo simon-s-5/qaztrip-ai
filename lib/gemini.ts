@@ -69,7 +69,8 @@ function withFallback<T>(
 export async function geminiJson<T = unknown>(opts: {
   system: string;
   prompt: string;
-  schema: object;
+  /** JSON schema; omit for a free-form JSON object (very large schemas are rejected by some models). */
+  schema?: object;
   parse?: (data: unknown) => T;
   limits?: CallLimits;
   preferModel?: string;
@@ -83,7 +84,7 @@ export async function geminiJson<T = unknown>(opts: {
         abortSignal,
         systemInstruction: opts.system,
         responseMimeType: "application/json",
-        responseJsonSchema: opts.schema,
+        ...(opts.schema ? { responseJsonSchema: opts.schema } : {}),
       },
     });
     const text = res.text;
